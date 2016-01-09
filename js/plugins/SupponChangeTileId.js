@@ -169,8 +169,10 @@
                     //if($gameMap.tileset().mode == 0 && )
                     var id0 = sender.data[(z * height0 + (y1+i)) * width0 + (x1+j)];
                     var id1 = $dataMap.data[(z * height + (y2+i)) * width + (x2+j)];
+                    var id2 = sender.data[(0 * height0 + (y1+i)) * width0 + (x1+j)];
+                    var isWall = 4351<id2 && id2<8192;
                     if ($gameMap.tileset().mode==0 && id0 == 2720) {continue};
-                    if(id0 != 0 || z==4){
+                    if(id0 != 0 || (z==4 && isWall)){
                         $dataMap.data[(z * height + (y2+i)) * width + (x2+j)] =
                             sender.data[(z * height0 + (y1+i)) * width0 + (x1+j)];
                     }
@@ -184,5 +186,16 @@
         _Scene_Map_start.call(this)
         DataManager.applyAllSupponCTI();
     };
+    
+//    var _Game_Player_updateNonmoving = Game_Player.prototype.updateNonmoving;
+//        Game_Player.prototype.updateNonmoving = function(wasMoving) {
+//        _Game_Player_updateNonmoving.call(this, wasMoving);
+//        if(wasMoving){
+//            for (var i=0; i<6; i++){
+//                console.log(i, '  ', $gameMap.tileId(this._x, this._y, i))
+//            }
+//            console.log(' ')
+//        }
+//    };
 
 })();
