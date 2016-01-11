@@ -1,7 +1,7 @@
 [
 null,
 {"id":1,"expanded":false,"name":"MAP001","order":1,"parentId":0,"scrollX":885.3333333333334,"scrollY":540.6666666666666},
-{"id":2,"expanded":false,"name":"マーケット","order":2,"parentId":0,"scrollX":874.6666666666666,"scrollY":670},
+{"id":2,"expanded":false,"name":"マーケット","order":2,"parentId":0,"scrollX":874.6666666666666,"scrollY":616.6666666666666},
 {"id":3,"expanded":false,"name":"マーケット","order":3,"parentId":0,"scrollX":874.6666666666666,"scrollY":530},
 {"id":4,"expanded":false,"name":"道具屋","order":4,"parentId":0,"scrollX":885.3333333333334,"scrollY":530}
 ]

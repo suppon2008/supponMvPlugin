@@ -10125,6 +10125,7 @@ Game_Interpreter.prototype.command302 = function() {
         while (this.nextEventCode() === 605) {
             this._index++;
             goods.push(this.currentCommand().parameters);
+            console.log(this.currentCommand().parameters)
         }
         SceneManager.push(Scene_Shop);
         SceneManager.prepareNextScene(goods, this._params[4]);
