@@ -1,5 +1,5 @@
 //=============================================================================
-// rpg_scenes.js
+// rpg_scenes.js v1.2.0
 //=============================================================================
 
 //-----------------------------------------------------------------------------
@@ -1499,6 +1499,7 @@ Scene_Save.prototype.onSavefileOk = function() {
 
 Scene_Save.prototype.onSaveSuccess = function() {
     SoundManager.playSave();
+	StorageManager.cleanBackup(this.savefileId());
     this.popScene();
 };
 

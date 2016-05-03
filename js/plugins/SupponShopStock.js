@@ -3,10 +3,18 @@
 //=============================================================================
 
 /*:
- * @plugindesc 在庫システムを有するお店を設定します。version 1.01
+ * @plugindesc 在庫システムを有するお店を設定します。version 1.02
  * @author Suppon
+ * 
+ * @param Label of stock Number
+ * @desc 在庫数の表記を設定します
+ * @default 在庫数
+ * 
+ * @param Label of sold out
+ * @desc 売り切れの表記を設定します
+ * @default 売り切れ
+ * 
  * @help
- *
  * このプラグインを使用するときは以下のようにプラグインコマンドを入力してください。
  * 
  * <ショップの作成例>
@@ -52,6 +60,9 @@
  */
 
 (function() {
+    var parameters = PluginManager.parameters('SupponShopStock');
+    var StockLabel = String(parameters['Label of stock Number']||'在庫数');
+    var SoldOutLabel = String(parameters['Label of sold out']||'売り切れ');
     
     var _Game_Interpreter_pluginCommand =Game_Interpreter.prototype.pluginCommand;
     Game_Interpreter.prototype.pluginCommand = function(command1, args) {
@@ -59,7 +70,7 @@
         args = args.filter(function(n){
             return n!=='';
         });
-        if(!$gameParty._supponSS){$gameParty._supponCTI=[]};
+        if(!$gameSystem._supponSS){$gameSystem._supponSS=[]};
         if (command1 === 'SupponSS') {
             var command2 = args.shift();
             switch (command2) {
@@ -99,7 +110,6 @@
             }
         }
     };
-    
     
     
     Game_System.prototype.supponSScheckData = function(){
@@ -361,7 +371,7 @@
         }        
         this.changePaintOpacity(this.isEnabled(item) && stockNumber>0 );
         this.drawItemName(item, rect.x, rect.y, rect.width - priceWidth);
-        var text = (stockNumber>0 ? this.price(item) : '売り切れ');
+        var text = (stockNumber>0 ? this.price(item) : SoldOutLabel);
         this.drawText(text, rect.x + rect.width - priceWidth,
                       rect.y, priceWidth, 'right');
         this.changePaintOpacity(true);
@@ -405,7 +415,7 @@
         var width = this.contents.width - this.textPadding() - x;
         var possessionWidth = this.textWidth('0000');
         this.changeTextColor(this.systemColor());
-        this.drawText('在庫数', x, y+this.lineHeight(), width - possessionWidth);
+        this.drawText(StockLabel, x, y+this.lineHeight(), width - possessionWidth);
         this.resetTextColor();
         this.drawText(this._stockNumber, x, y+this.lineHeight(), width, 'right');
     };
