@@ -1,5 +1,5 @@
 //=============================================================================
-// rpg_managers.js v1.2.0
+// rpg_managers.js v1.5.0
 //=============================================================================
 
 //-----------------------------------------------------------------------------
@@ -86,7 +86,7 @@ DataManager.loadDataFile = function(name, src) {
             DataManager.onLoad(window[name]);
         }
     };
-    xhr.onerror = function() {
+    xhr.onerror = this._mapLoader || function() {
         DataManager._errorUrl = DataManager._errorUrl || url;
     };
     window[name] = null;
@@ -106,6 +106,7 @@ DataManager.isDatabaseLoaded = function() {
 DataManager.loadMapData = function(mapId) {
     if (mapId > 0) {
         var filename = 'Map%1.json'.format(mapId.padZero(3));
+        this._mapLoader = ResourceHandler.createLoader('data/' + filename, this.loadDataFile.bind(this, '$dataMap', filename));
         this.loadDataFile('$dataMap', filename);
     } else {
         this.makeEmptyMap();
@@ -141,6 +142,11 @@ DataManager.onLoad = function(object) {
                 this.extractMetadata(data);
             }
         }
+    }
+    if (object === $dataSystem) {
+        Decrypter.hasEncryptedImages = !!object.hasEncryptedImages;
+        Decrypter.hasEncryptedAudio = !!object.hasEncryptedAudio;
+        Scene_Boot.loadSystemImages();
     }
 };
 
@@ -314,12 +320,12 @@ DataManager.loadAllSavefileImages = function() {
 DataManager.loadSavefileImages = function(info) {
     if (info.characters) {
         for (var i = 0; i < info.characters.length; i++) {
-            ImageManager.loadCharacter(info.characters[i][0]);
+            ImageManager.reserveCharacter(info.characters[i][0]);
         }
     }
     if (info.faces) {
         for (var j = 0; j < info.faces.length; j++) {
-            ImageManager.loadFace(info.faces[j][0]);
+            ImageManager.reserveFace(info.faces[j][0]);
         }
     }
 };
@@ -655,7 +661,7 @@ StorageManager.restoreBackup = function(savefileId) {
             var compressed = LZString.compressToBase64(data);
             var key = this.webStorageKey(savefileId);
             localStorage.setItem(key, compressed);
-            localStorage.removeItem(key + "bak","");
+            localStorage.removeItem(key + "bak");
         }
     }
 };
@@ -747,11 +753,10 @@ StorageManager.removeWebStorage = function(savefileId) {
 };
 
 StorageManager.localFileDirectoryPath = function() {
-    var path = window.location.pathname.replace(/(\/www|)\/[^\/]*$/, '/save/');
-    if (path.match(/^\/([A-Z]\:)/)) {
-        path = path.slice(1);
-    }
-    return decodeURIComponent(path);
+    var path = require('path');
+
+    var base = path.dirname(process.mainModule.filename);
+    return path.join(base, 'save/');
 };
 
 StorageManager.localFilePath = function(savefileId) {
@@ -785,7 +790,15 @@ function ImageManager() {
     throw new Error('This is a static class');
 }
 
-ImageManager._cache = {};
+ImageManager.cache = new CacheMap(ImageManager);
+
+ImageManager._imageCache = new ImageCache();
+ImageManager._requestQueue = new RequestQueue();
+ImageManager._systemReservationId = Utils.generateRuntimeId();
+
+ImageManager._generateCacheKey = function(path, hue){
+    return  path + ':' + hue;
+};
 
 ImageManager.loadAnimation = function(filename, hue) {
     return this.loadBitmap('img/animations/', filename, hue, true);
@@ -855,39 +868,38 @@ ImageManager.loadBitmap = function(folder, filename, hue, smooth) {
 };
 
 ImageManager.loadEmptyBitmap = function() {
-    if (!this._cache[null]) {
-        this._cache[null] = new Bitmap();
+    var empty = this._imageCache.get('empty');
+    if(!empty){
+        empty = new Bitmap();
+        this._imageCache.add('empty', empty);
+        this._imageCache.reserve('empty', empty, this._systemReservationId);
     }
-    return this._cache[null];
+
+    return empty;
 };
 
 ImageManager.loadNormalBitmap = function(path, hue) {
-    var key = path + ':' + hue;
-    if (!this._cache[key]) {
-        var bitmap = Bitmap.load(path);
+    var key = this._generateCacheKey(path, hue);
+    var bitmap = this._imageCache.get(key);
+    if (!bitmap) {
+        bitmap = Bitmap.load(path);
         bitmap.addLoadListener(function() {
             bitmap.rotateHue(hue);
         });
-        this._cache[key] = bitmap;
+        this._imageCache.add(key, bitmap);
+    }else if(!bitmap.isReady()){
+        bitmap.decode();
     }
-    return this._cache[key];
+
+    return bitmap;
 };
 
 ImageManager.clear = function() {
-    this._cache = {};
+    this._imageCache = new ImageCache();
 };
 
 ImageManager.isReady = function() {
-    for (var key in this._cache) {
-        var bitmap = this._cache[key];
-        if (bitmap.isError()) {
-            throw new Error('Failed to load: ' + bitmap.url);
-        }
-        if (!bitmap.isReady()) {
-            return false;
-        }
-    }
-    return true;
+    return this._imageCache.isReady();
 };
 
 ImageManager.isObjectCharacter = function(filename) {
@@ -904,6 +916,182 @@ ImageManager.isZeroParallax = function(filename) {
     return filename.charAt(0) === '!';
 };
 
+
+ImageManager.reserveAnimation = function(filename, hue, reservationId) {
+    return this.reserveBitmap('img/animations/', filename, hue, true, reservationId);
+};
+
+ImageManager.reserveBattleback1 = function(filename, hue, reservationId) {
+    return this.reserveBitmap('img/battlebacks1/', filename, hue, true, reservationId);
+};
+
+ImageManager.reserveBattleback2 = function(filename, hue, reservationId) {
+    return this.reserveBitmap('img/battlebacks2/', filename, hue, true, reservationId);
+};
+
+ImageManager.reserveEnemy = function(filename, hue, reservationId) {
+    return this.reserveBitmap('img/enemies/', filename, hue, true, reservationId);
+};
+
+ImageManager.reserveCharacter = function(filename, hue, reservationId) {
+    return this.reserveBitmap('img/characters/', filename, hue, false, reservationId);
+};
+
+ImageManager.reserveFace = function(filename, hue, reservationId) {
+    return this.reserveBitmap('img/faces/', filename, hue, true, reservationId);
+};
+
+ImageManager.reserveParallax = function(filename, hue, reservationId) {
+    return this.reserveBitmap('img/parallaxes/', filename, hue, true, reservationId);
+};
+
+ImageManager.reservePicture = function(filename, hue, reservationId) {
+    return this.reserveBitmap('img/pictures/', filename, hue, true, reservationId);
+};
+
+ImageManager.reserveSvActor = function(filename, hue, reservationId) {
+    return this.reserveBitmap('img/sv_actors/', filename, hue, false, reservationId);
+};
+
+ImageManager.reserveSvEnemy = function(filename, hue, reservationId) {
+    return this.reserveBitmap('img/sv_enemies/', filename, hue, true, reservationId);
+};
+
+ImageManager.reserveSystem = function(filename, hue, reservationId) {
+    return this.reserveBitmap('img/system/', filename, hue, false, reservationId || this._systemReservationId);
+};
+
+ImageManager.reserveTileset = function(filename, hue, reservationId) {
+    return this.reserveBitmap('img/tilesets/', filename, hue, false, reservationId);
+};
+
+ImageManager.reserveTitle1 = function(filename, hue, reservationId) {
+    return this.reserveBitmap('img/titles1/', filename, hue, true, reservationId);
+};
+
+ImageManager.reserveTitle2 = function(filename, hue, reservationId) {
+    return this.reserveBitmap('img/titles2/', filename, hue, true, reservationId);
+};
+
+ImageManager.reserveBitmap = function(folder, filename, hue, smooth, reservationId) {
+    if (filename) {
+        var path = folder + encodeURIComponent(filename) + '.png';
+        var bitmap = this.reserveNormalBitmap(path, hue || 0, reservationId || this._defaultReservationId);
+        bitmap.smooth = smooth;
+        return bitmap;
+    } else {
+        return this.loadEmptyBitmap();
+    }
+};
+
+ImageManager.reserveNormalBitmap = function(path, hue, reservationId){
+    var bitmap = this.loadNormalBitmap(path, hue);
+    this._imageCache.reserve(this._generateCacheKey(path, hue), bitmap, reservationId);
+
+    return bitmap;
+};
+
+ImageManager.releaseReservation = function(reservationId){
+    this._imageCache.releaseReservation(reservationId);
+};
+
+ImageManager.setDefaultReservationId = function(reservationId){
+    this._defaultReservationId = reservationId;
+};
+
+
+ImageManager.requestAnimation = function(filename, hue) {
+    return this.requestBitmap('img/animations/', filename, hue, true);
+};
+
+ImageManager.requestBattleback1 = function(filename, hue) {
+    return this.requestBitmap('img/battlebacks1/', filename, hue, true);
+};
+
+ImageManager.requestBattleback2 = function(filename, hue) {
+    return this.requestBitmap('img/battlebacks2/', filename, hue, true);
+};
+
+ImageManager.requestEnemy = function(filename, hue) {
+    return this.requestBitmap('img/enemies/', filename, hue, true);
+};
+
+ImageManager.requestCharacter = function(filename, hue) {
+    return this.requestBitmap('img/characters/', filename, hue, false);
+};
+
+ImageManager.requestFace = function(filename, hue) {
+    return this.requestBitmap('img/faces/', filename, hue, true);
+};
+
+ImageManager.requestParallax = function(filename, hue) {
+    return this.requestBitmap('img/parallaxes/', filename, hue, true);
+};
+
+ImageManager.requestPicture = function(filename, hue) {
+    return this.requestBitmap('img/pictures/', filename, hue, true);
+};
+
+ImageManager.requestSvActor = function(filename, hue) {
+    return this.requestBitmap('img/sv_actors/', filename, hue, false);
+};
+
+ImageManager.requestSvEnemy = function(filename, hue) {
+    return this.requestBitmap('img/sv_enemies/', filename, hue, true);
+};
+
+ImageManager.requestSystem = function(filename, hue) {
+    return this.requestBitmap('img/system/', filename, hue, false);
+};
+
+ImageManager.requestTileset = function(filename, hue) {
+    return this.requestBitmap('img/tilesets/', filename, hue, false);
+};
+
+ImageManager.requestTitle1 = function(filename, hue) {
+    return this.requestBitmap('img/titles1/', filename, hue, true);
+};
+
+ImageManager.requestTitle2 = function(filename, hue) {
+    return this.requestBitmap('img/titles2/', filename, hue, true);
+};
+
+ImageManager.requestBitmap = function(folder, filename, hue, smooth) {
+    if (filename) {
+        var path = folder + encodeURIComponent(filename) + '.png';
+        var bitmap = this.requestNormalBitmap(path, hue || 0);
+        bitmap.smooth = smooth;
+        return bitmap;
+    } else {
+        return this.loadEmptyBitmap();
+    }
+};
+
+ImageManager.requestNormalBitmap = function(path, hue){
+    var key = this._generateCacheKey(path, hue);
+    var bitmap = this._imageCache.get(key);
+    if(!bitmap){
+        bitmap = Bitmap.request(path);
+        bitmap.addLoadListener(function(){
+            bitmap.rotateHue(hue);
+        });
+        this._imageCache.add(key, bitmap);
+        this._requestQueue.enqueue(key, bitmap);
+    }else{
+        this._requestQueue.raisePriority(key);
+    }
+
+    return bitmap;
+};
+
+ImageManager.update = function(){
+    this._requestQueue.update();
+};
+
+ImageManager.clearRequest = function(){
+    this._requestQueue.clear();
+};
+
 //-----------------------------------------------------------------------------
 // AudioManager
 //
@@ -913,6 +1101,7 @@ function AudioManager() {
     throw new Error('This is a static class');
 }
 
+AudioManager._masterVolume   = 1;   // (min: 0, max: 1)
 AudioManager._bgmVolume      = 100;
 AudioManager._bgsVolume      = 100;
 AudioManager._meVolume       = 100;
@@ -926,6 +1115,19 @@ AudioManager._seBuffers      = [];
 AudioManager._staticBuffers  = [];
 AudioManager._replayFadeTime = 0.5;
 AudioManager._path           = 'audio/';
+AudioManager._blobUrl        = null;
+
+Object.defineProperty(AudioManager, 'masterVolume', {
+    get: function() {
+        return this._masterVolume;
+    },
+    set: function(value) {
+        this._masterVolume = value;
+        WebAudio.setMasterVolume(this._masterVolume);
+        Graphics.setVideoVolume(this._masterVolume);
+    },
+    configurable: true
+});
 
 Object.defineProperty(AudioManager, 'bgmVolume', {
     get: function() {
@@ -975,13 +1177,35 @@ AudioManager.playBgm = function(bgm, pos) {
         this.updateBgmParameters(bgm);
     } else {
         this.stopBgm();
-        if (bgm.name) {
-            this._bgmBuffer = this.createBuffer('bgm', bgm.name);
-            this.updateBgmParameters(bgm);
-            if (!this._meBuffer) {
-                this._bgmBuffer.play(true, pos || 0);
+        if (bgm.name) { 
+            if(Decrypter.hasEncryptedAudio && this.shouldUseHtml5Audio()){
+                this.playEncryptedBgm(bgm, pos);
+            }
+            else {
+                this._bgmBuffer = this.createBuffer('bgm', bgm.name);
+                this.updateBgmParameters(bgm);
+                if (!this._meBuffer) {
+                    this._bgmBuffer.play(true, pos || 0);
+                }
             }
         }
+    }
+    this.updateCurrentBgm(bgm, pos);
+};
+
+AudioManager.playEncryptedBgm = function(bgm, pos) {
+    var ext = this.audioFileExt();
+    var url = this._path + 'bgm/' + encodeURIComponent(bgm.name) + ext;
+    url = Decrypter.extToEncryptExt(url);
+    Decrypter.decryptHTML5Audio(url, bgm, pos);
+};
+
+AudioManager.createDecryptBuffer = function(url, bgm, pos){
+    this._blobUrl = url;
+    this._bgmBuffer = this.createBuffer('bgm', bgm.name);
+    this.updateBgmParameters(bgm);
+    if (!this._meBuffer) {
+        this._bgmBuffer.play(true, pos || 0);
     }
     this.updateCurrentBgm(bgm, pos);
 };
@@ -1241,7 +1465,8 @@ AudioManager.createBuffer = function(folder, name) {
     var ext = this.audioFileExt();
     var url = this._path + folder + '/' + encodeURIComponent(name) + ext;
     if (this.shouldUseHtml5Audio() && folder === 'bgm') {
-        Html5Audio.setup(url);
+        if(this._blobUrl) Html5Audio.setup(this._blobUrl);
+        else Html5Audio.setup(url);
         return Html5Audio;
     } else {
         return new WebAudio(url);
@@ -1265,9 +1490,9 @@ AudioManager.audioFileExt = function() {
 };
 
 AudioManager.shouldUseHtml5Audio = function() {
-    // We use HTML5 Audio to play BGM instead of Web Audio API
-    // because decodeAudioData() is very slow on Android Chrome.
-    return Utils.isAndroidChrome();
+    // The only case where we wanted html5audio was android/ no encrypt
+    // Atsuma-ru asked to force webaudio there too, so just return false for ALL    // return Utils.isAndroidChrome() && !Decrypter.hasEncryptedAudio;
+ return false;
 };
 
 AudioManager.checkErrors = function() {
@@ -1549,10 +1774,10 @@ function SceneManager() {
 }
 
 /*
- * Gets the current time in ms.
+ * Gets the current time in ms without on iOS Safari.
  * @private
  */
-SceneManager._getTimeInMs = function() {
+SceneManager._getTimeInMsWithoutMobileSafari = function() {
     return performance.now();
 };
 
@@ -1569,7 +1794,7 @@ SceneManager._screenHeight      = 624;
 SceneManager._boxWidth          = 816;
 SceneManager._boxHeight         = 624;
 SceneManager._deltaTime = 1.0 / 60.0;
-SceneManager._currentTime = SceneManager._getTimeInMs();
+if (!Utils.isMobileSafari()) SceneManager._currentTime = SceneManager._getTimeInMsWithoutMobileSafari();
 SceneManager._accumulator = 0.0;
 
 SceneManager.run = function(sceneClass) {
@@ -1611,8 +1836,6 @@ SceneManager.preferableRendererType = function() {
         return 'canvas';
     } else if (Utils.isOptionValid('webgl')) {
         return 'webgl';
-    } else if (this.shouldUseCanvasRenderer()) {
-        return 'canvas';
     } else {
         return 'auto';
     }
@@ -1677,6 +1900,10 @@ SceneManager.requestUpdate = function() {
 SceneManager.update = function() {
     try {
         this.tickStart();
+        if (Utils.isMobileSafari()) {
+            this.updateInputData();
+        }
+        this.updateManagers();
         this.updateMain();
         this.tickEnd();
     } catch (e) {
@@ -1702,16 +1929,16 @@ SceneManager.onError = function(e) {
 SceneManager.onKeyDown = function(event) {
     if (!event.ctrlKey && !event.altKey) {
         switch (event.keyCode) {
-            case 116:   // F5
-                if (Utils.isNwjs()) {
-                    location.reload();
-                }
-                break;
-            case 119:   // F8
-                if (Utils.isNwjs() && Utils.isOptionValid('test')) {
-                    require('nw.gui').Window.get().showDevTools();
-                }
-                break;
+        case 116:   // F5
+            if (Utils.isNwjs()) {
+                location.reload();
+            }
+            break;
+        case 119:   // F8
+            if (Utils.isNwjs() && Utils.isOptionValid('test')) {
+                require('nw.gui').Window.get().showDevTools();
+            }
+            break;
         }
     }
 };
@@ -1741,31 +1968,40 @@ SceneManager.updateInputData = function() {
 };
 
 SceneManager.updateMain = function() {
-
-    var newTime = this._getTimeInMs();
-    var fTime =  (newTime - this._currentTime) / 1000;
-    if (fTime > 0.25) fTime = 0.25;
-    this._currentTime = newTime;
-    this._accumulator += fTime;
-
-    while (this._accumulator >= this._deltaTime) {
-        this.updateInputData();
+    if (Utils.isMobileSafari()) {
         this.changeScene();
         this.updateScene();
-        this._accumulator -= this._deltaTime;
+    } else {
+        var newTime = this._getTimeInMsWithoutMobileSafari();
+        var fTime = (newTime - this._currentTime) / 1000;
+        if (fTime > 0.25) fTime = 0.25;
+        this._currentTime = newTime;
+        this._accumulator += fTime;
+        while (this._accumulator >= this._deltaTime) {
+            this.updateInputData();
+            this.changeScene();
+            this.updateScene();
+            this._accumulator -= this._deltaTime;
+        }
     }
     this.renderScene();
     this.requestUpdate();
+};
+
+SceneManager.updateManagers = function() {
+    ImageManager.update();
 };
 
 SceneManager.changeScene = function() {
     if (this.isSceneChanging() && !this.isCurrentSceneBusy()) {
         if (this._scene) {
             this._scene.terminate();
+            this._scene.detachReservation();
             this._previousClass = this._scene.constructor;
         }
         this._scene = this._nextScene;
         if (this._scene) {
+            this._scene.attachReservation();
             this._scene.create();
             this._nextScene = null;
             this._sceneStarted = false;
@@ -1882,6 +2118,14 @@ SceneManager.backgroundBitmap = function() {
     return this._backgroundBitmap;
 };
 
+SceneManager.resume = function() {
+    this._stopped = false;
+    this.requestUpdate();
+    if (!Utils.isMobileSafari()) {
+        this._currentTime = this._getTimeInMsWithoutMobileSafari();
+        this._accumulator = 0;
+    }
+};
 
 //-----------------------------------------------------------------------------
 // BattleManager
@@ -2019,17 +2263,17 @@ BattleManager.update = function() {
 
 BattleManager.updateEvent = function() {
     switch (this._phase) {
-    case 'start':
-    case 'turn':
-    case 'turnEnd':
-        if (this.isActionForced()) {
-            this.processForcedAction();
-            return true;
-        } else {
-            return this.updateEventMain();
-        }
+        case 'start':
+        case 'turn':
+        case 'turnEnd':
+            if (this.isActionForced()) {
+                this.processForcedAction();
+                return true;
+            } else {
+                return this.updateEventMain();
+            }
     }
-    return this.checkAbort();
+    return this.checkAbort2();
 };
 
 BattleManager.updateEventMain = function() {
@@ -2303,13 +2547,14 @@ BattleManager.invokeCounterAttack = function(subject, target) {
     action.setAttack();
     action.apply(subject);
     this._logWindow.displayCounter(target);
-    this._logWindow.displayActionResults(subject, subject);
+    this._logWindow.displayActionResults(target, subject);
 };
 
 BattleManager.invokeMagicReflection = function(subject, target) {
+	this._action._reflectionTarget = target;
     this._logWindow.displayReflection(target);
     this._action.apply(subject);
-    this._logWindow.displayActionResults(subject, subject);
+    this._logWindow.displayActionResults(target, subject);
 };
 
 BattleManager.applySubstitute = function(target) {
@@ -2371,6 +2616,15 @@ BattleManager.checkAbort = function() {
     if ($gameParty.isEmpty() || this.isAborting()) {
         this.processAbort();
         return true;
+    }
+    return false;
+};
+
+BattleManager.checkAbort2 = function() {
+    if ($gameParty.isEmpty() || this.isAborting()) {
+        SoundManager.playEscape();
+        this._escaped = true;
+        this.processAbort();
     }
     return false;
 };
@@ -2437,7 +2691,7 @@ BattleManager.updateBattleEnd = function() {
     if (this.isBattleTest()) {
         AudioManager.stopBgm();
         SceneManager.exit();
-    } else if ($gameParty.isAllDead()) {
+    } else if (!this._escaped && $gameParty.isAllDead()) {
         if (this._canLose) {
             $gameParty.reviveBattleMembers();
             SceneManager.pop();

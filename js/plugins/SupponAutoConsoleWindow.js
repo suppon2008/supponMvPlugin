@@ -56,8 +56,9 @@
  *
  * @help 完成ゲームをアップロードするときは必ずこのプラグインをOFFにしてください。
  */
-
+if(Utils.isOptionValid('test')){
 (function() {
+    TEST = Utils.isOptionValid('test');
     var parameters = PluginManager.parameters('SupponAutoConsoleWindow');
     var UseSpecificPosition = parameters['Use specific position'] === 'true';
     
@@ -80,4 +81,18 @@
         require('nw.gui').Window.get().showDevTools().moveTo(consoleWindowX, consoleWindowY);
         window.focus();
     };
+    var _Scene_Title_drawGameTitle = Scene_Title.prototype.drawGameTitle;
+    Scene_Title.prototype.drawGameTitle = function() {
+        var text = $dataSystem.gameTitle = 'TEST'
+        _Scene_Title_drawGameTitle.call(this);
+    };
+    
+    Scene_Base.prototype.fadeSpeed = function() {
+        return 1;
+    };
+    
+    Scene_Map.prototype.encounterEffectSpeed = function() {
+        return 0;
+    };
 })();
+}

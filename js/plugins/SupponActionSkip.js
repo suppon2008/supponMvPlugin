@@ -3,7 +3,7 @@
 //=============================================================================
 
 /*:
- * @plugindesc ActionSkip in battle. Version 1.01
+ * @plugindesc ActionSkip in battle. Version 1.00
  * @author Suppon
  *
  * @param Trigger Switch ID
@@ -43,13 +43,15 @@
     
     var _Window_BattleLog_isBusy = Window_BattleLog.prototype.isBusy
     Window_BattleLog.prototype.isBusy = function() {
-        if (this.isFastForward() && IsActionSkipOn()) {return false}
+        //if (this.isFastForward() && IsActionSkipOn()) {return false}
+        if (true) {return false}
         _Window_BattleLog_isBusy.call(this);
     };
     
     var _Window_BattleLog_update = Window_BattleLog.prototype.update;
     Window_BattleLog.prototype.update = function() {
-        if (this.isFastForward() && IsActionSkipOn()) {
+        //if (this.isFastForward() && IsActionSkipOn()) {
+        if (true) {
         this.callNextMethod();
         this.callNextMethod();
         this.callNextMethod();
@@ -61,9 +63,11 @@
     
     BattleManager.isBusy = function() {
     return ($gameMessage.isBusy() || 
-            (!(this._logWindow.isFastForward() && IsActionSkipOn()) &&
-            this._spriteset.isBusy()) ||
-            this._logWindow.isBusy());
+//            (!(this._logWindow.isFastForward() && IsActionSkipOn()) &&
+//            this._spriteset.isBusy()) ||
+//            this._logWindow.isBusy()
+           false
+           );
     };
     
     var _BattleManager_endTurn = BattleManager.endTurn;

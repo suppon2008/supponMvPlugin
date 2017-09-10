@@ -43,6 +43,23 @@
  * 複数行いれてもOKです。数字はスペースで区切ってください。最後にスペースを入れないでください。
  */
 (function() {
+    
+    var _Game_Troop_initialize = Game_Troop.prototype.initialize;
+    Game_Troop.prototype.initialize = function() {
+        _Game_Troop_initialize.call(this);
+        this._reeList = [];
+    };
+    
+    var _Game_Interpreter_pluginCommand =Game_Interpreter.prototype.pluginCommand;
+    Game_Interpreter.prototype.pluginCommand = function(command1, args) {
+        _Game_Interpreter_pluginCommand.call(this, command1, args);
+        args = args.filter(function(n){
+            return n!=='';
+        });
+        if (command1 === 'supponREE') {
+            $gameTroop._reeList.push(this._list[this._index]);
+        }
+    };
 
     var _Game_Troop_setup = Game_Troop.prototype.setup;
     Game_Troop.prototype.setup = function(troopId) {
@@ -50,7 +67,11 @@
         this.supponReUsed = false
         this._troopId = troopId;
         var enemyNumber = 0;
-        var lists = $dataTroops[this._troopId].pages[0].list;
+        if(this._reeList.length != 0){
+            var lists = this._reeList;
+        } else {
+           var lists = $dataTroops[this._troopId].pages[0].list;
+        }
         for (var i=0; i<lists.length; i++) {
             if (!lists[i].parameters[0] || !(lists[i].code === 356)){continue};
             var args = lists[i].parameters[0].split(" ")
@@ -67,6 +88,7 @@
             } 
         };
         if (enemyNumber>0) {
+            this._reeList = [];
             this.makeUniqueNames();
             this.supponReUsed = true
             return;
@@ -126,7 +148,7 @@
         this._enemySprites.forEach(function(sprite){
             l = Math.floor(line*(j-1)/size);
             sprite._homeX = (Graphics.width/(1+size)*0.6)*(1+line*(j-1)%(size));
-            sprite._homeY += (Graphics.height/line*3)*(line-l*2)/15
+            sprite._homeY += (Graphics.height/line*3)*(line-l*2)/15-(j%2)*25
             -(Graphics.height/line*3)/30;
             j++;
         });

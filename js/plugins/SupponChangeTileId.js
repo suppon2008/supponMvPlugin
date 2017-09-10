@@ -3,7 +3,7 @@
 //=============================================================================
 
 /*:
- * @plugindesc マップタイルIDのコピー&ペーストを行います。 Version 1.04
+ * @plugindesc マップタイルIDのコピー&ペーストを行います。 Version 1.05
  * @author Suppon
  * @help
  *
@@ -286,8 +286,16 @@
         if(!$gameParty._supponCTI){$gameParty._supponCTI=[]};
         if (command1 === 'SupponCTI') {
             args = args.map(function(element){
-                return Window_Base.prototype.convertEscapeCharacters.call(this, element);
-            },this)
+                element = element.replace(/\x1bV\[(\d+)\]/gi, function() {
+                return $gameVariables.value(parseInt(arguments[1]));
+                });
+                element = element.replace(/\x1bV\[(\d+)\]/gi, function() {
+                return $gameVariables.value(parseInt(arguments[1]));
+                });
+            return element;
+            },this);
+//                return Window_Base.prototype.convertEscapeCharacters.call(this, element);
+//                },this)
             var command2 = args.shift();
             switch (command2) {
             case 'add':
@@ -452,6 +460,7 @@
                 }
             }
         }
+        SceneManager._scene._spriteset._tilemap.refresh();
     }
     
     DataManager.refreshAutoTiles = function(x, y, z){
