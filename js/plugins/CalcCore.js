@@ -10,15 +10,139 @@
  */
 
 var VERSION = 'V0.60(2016/01/31  7:11)';
-var CalcWaitingTime = 20000;
+//var CalcWaitingTime = 20000;
+var CalcWaitingBaseTime = 25000;
 
 var RankingClass = [
     '八級', '七級', '六級', '五級', '四級', '三級', '準二級', '二級', '準一級', '一級',
     '初段', '二段', '三段', '四段', '五段', '六段', '七段', '八段', '九段', '十段'
-]
+];
 
-var DifficultyText = ['','Normal', 'Hard', '', 'Super Hard']
+var FontStyles = {
+    style00 : { //テンプレート
+        fontFace     : null,
+        fontSize     : null,
+        fontItalic   : null,
+        textColor    : null,
+        outlineColor : null,
+        outlineWidth : null
+    },
+    style01 : { //タイトル
+        fontFace     : null,
+        fontSize     : 24,
+        fontItalic   : null,
+        textColor    : null,
+        outlineColor : null,
+        outlineWidth : 2
+    },
+    style02 : { //ranking title
+        fontFace     : null,
+        fontSize     : 48,
+        fontItalic   : null,
+        textColor    : null,
+        outlineColor : null,
+        outlineWidth : null
+    },
+    style03 : { //ranking header
+        fontFace     : null,
+        fontSize     : 28,
+        fontItalic   : null,
+        textColor    : '#2e9393',
+        outlineColor : null,
+        outlineWidth : null
+    },
+    style04 : { //ranking subtitle
+        fontFace     : null,
+        fontSize     : 28,
+        fontItalic   : null,
+        textColor    : '#c7ff90',
+        outlineColor : null,
+        outlineWidth : null
+    },
+    style05 : { //sprite dificulty
+        fontFace     : 'MyFont001',
+        fontSize     : 32,
+        fontItalic   : null,
+        textColor    : null,
+        outlineColor : 'rgba(0, 0, 0, 1)',
+        outlineWidth : 6
+    },
+    style06 : { //sprite enemy name label
+        fontFace     : null,
+        fontSize     : 20,
+        fontItalic   : null,
+        textColor    : null,
+        outlineColor : 'rgba(0, 0, 0, 1)',
+        outlineWidth : 6
+    },
+    style07 : { //sprite formula font style base
+        fontFace     : 'MyFont001',
+        fontSize     : null,
+        fontItalic   : null,
+        textColor    : null,
+        outlineColor : 'rgba(0, 0, 0, 1)',
+        outlineWidth : 6
+    },
+    style08 : { //sprite skill formula style 01
+        fontFace     : 'MyFont001',
+        fontSize     : 24,
+        fontItalic   : null,
+        textColor    : null,
+        outlineColor : 'rgba(0, 0, 0, 1)',
+        outlineWidth : 6
+    },
+    style09 : { //sprite skill formula style 02
+        fontFace     : 'MyFont001',
+        fontSize     : 24,
+        fontItalic   : null,
+        textColor    : 'rgb(100, 100, 100)',
+        outlineColor : 'rgba(0, 0, 0, 1)',
+        outlineWidth : 6
+    },
+    style10 : { // sprite enemy formula style 02
+        fontFace     : 'MyFont001',
+        fontSize     : null,
+        fontItalic   : null,
+        textColor    : 'rgb(100, 100, 255)',
+        outlineColor : 'rgba(0, 0, 0, 1)',
+        outlineWidth : 6
+    },
+    style11 : { // sprite enemy formula style 03
+        fontFace     : 'MyFont001',
+        fontSize     : 20,
+        fontItalic   : null,
+        textColor    : null,
+        outlineColor : 'rgba(0, 0, 0, 1)',
+        outlineWidth : 4
+    },
+    style12 : { //judgement
+        fontFace     : 'MyFont001',
+        fontSize     : 48,
+        fontItalic   : null,
+        textColor    : null, //おのおの指定
+        outlineColor : null,
+        outlineWidth : 8
+    },
+    style13 : { //certificate draw head, rank
+        fontFace     : null,
+        fontSize     : 40,
+        fontItalic   : null,
+        textColor    : '#000000',
+        outlineColor : 'rgb(51, 51, 51)',
+        outlineWidth : 3
+    },
+    style14 : { //certificate draw name, content, date, difficulty, score, rate....
+        fontFace     : null,
+        fontSize     : 24,
+        fontItalic   : null,
+        textColor    : '#000000',
+        outlineColor : 'rgb(51, 51, 51)',
+        outlineWidth : 1
+    }
+}
 
+var DifficultyText = ['','Regular', 'Speedy', '', 'Catastrophe'];
+var DifficultyTextEx = ['','Easy', 'Normal', 'Hard', 'Hell']
 //test4 = function(){
 //    CalcManager.saveRanking();
 //}
@@ -26,6 +150,22 @@ var DifficultyText = ['','Normal', 'Hard', '', 'Super Hard']
 //test5 = function(){
 //    CalcManager.loadRanking();
 //}
+
+Input.keyRemapForCalc = function(){
+    Input.keyMapperBack = JSON.parse(JSON.stringify(Input.keyMapper));
+    for (var i = 0; i < 10; i++){
+        Input.keyMapper[i+96] = i.toString();
+    }
+    Input.keyMapper[8] = 'escape';
+    Input.keyMapper[13] = 'Enter';
+    //ConfigManager.keyMapper[189] = '-';
+    Input.keyMapper[121] = 'forced';
+}
+
+Input.restoreKeyMapper = function(){
+    Input.keyMapper = Input.keyMapperBack;
+}
+
 
 Bitmap.prototype.applyFontStyle = function(styleData){
     this.fontFace = styleData.fontFace || this.fontFace;
@@ -72,10 +212,10 @@ WindowLayer.prototype.updateSlideIn = function(){
 }
 
 //起動時の処理
-var _Scene_Boot_create = Scene_Boot.prototype.create;
-Scene_Boot.prototype.create = function() {
-    _Scene_Boot_create.call(this);
-};
+//var _Scene_Boot_create = Scene_Boot.prototype.create;
+//Scene_Boot.prototype.create = function() {
+//    _Scene_Boot_create.call(this);
+//};
 
 //ニューゲーム時の処理
 var _DataManager_setupNewGame = DataManager.setupNewGame;
@@ -84,6 +224,16 @@ DataManager.setupNewGame = function() {
     $gameSwitches.setValue(111, $gameTemp.isPlaytest());
     CalcManager._rankPosition = 0;
     CalcManager.initRankingData();
+};
+var _DataManager_makeSavefileInfo = DataManager.makeSavefileInfo;
+DataManager.makeSavefileInfo = function() {
+    var info = _DataManager_makeSavefileInfo.call(this);
+    var actor = $gameActors.actor(11);
+    var playerRank = CalcManager.OjbOfRankingModeChoice().playerRank;
+    var text = actor.name()+'  Lv'+actor._level+'  '+playerRank;
+    info.difficultyText = DifficultyTextEx[$gameVariables.value(147)];
+    info.title = text;
+    return info;
 };
 
 BattleManager.onEncounter = function() {
@@ -146,28 +296,12 @@ BattleManager.processDefeat = function(){
 }
 
 BattleManager.stopCalc = function(){
-    ConfigManager.restoreKeyMapper();
+    Input.restoreKeyMapper();//abcd
     SceneManager._scene._calcInputWindow.visible = false;
     SceneManager._scene._calcInputWindow.deactivate();
     SceneManager._scene._calcInputDisplayWindow.visible = false;
     $gameParty.cancelCalcTarget();
 }
-
-//var _StorageManager_localFilePath = StorageManager.localFilePath;
-//StorageManager.localFilePath = function(savefileId) {
-//    if(savefileId == -2){
-//        return this.localFileDirectoryPath() + 'ranking.rpgsave';
-//    }
-//    return _StorageManager_localFilePath.call(this,savefileId);
-//};
-//
-//var _StorageManager_webStorageKey = StorageManager.webStorageKey;
-//StorageManager.webStorageKey = function(savefileId) {
-//    if(savefileId == -2){
-//        return 'RPG Ranking';
-//    }
-//    return _StorageManager_webStorageKey.call(this,savefileId);
-//};
 
 SoundManager.playLevelUp = function() {
     //this.playSystemSound(23);
@@ -175,6 +309,10 @@ SoundManager.playLevelUp = function() {
     AudioManager.playStaticSe(se);
 };
 
+SoundManager.playSpeaking = function(p) {
+    var se = {name: "Speaking", pan: 0, pitch: r(p-40,p+40), volume: 90};
+    AudioManager.playStaticSe(se);
+};
 
 function CalcManager() {
     throw new Error('This is a static class');
@@ -185,16 +323,47 @@ CalcManager._emptyAnswer = 0;
 CalcManager._calcInputWindow = null;
 CalcManager._calcInputDisplayWindow = null;
 CalcManager._scene = null;
-//CalcManager._rankingData = {};
 CalcManager._rankPosition = 0;
 CalcManager._escapeReady = false;
 
+CalcManager.calcWaitingTime = function(){
+    if(this.isRankingMode()){
+        switch(this.difficulty()){
+            case 2:
+                return Math.round(CalcWaitingBaseTime*0.8);
+                break;
+            case 4:
+                return Math.round(CalcWaitingBaseTime*0.6);
+                break;
+            default:
+                return CalcWaitingBaseTime;
+                break;
+        }
+    } else {
+        switch($gameVariables.value(147)){
+            case 1:
+                return CalcWaitingBaseTime*2;//easy
+                break;
+            case 3:
+                return Math.round(CalcWaitingBaseTime*0.5);//hard
+                break;
+            case 4:
+                return Math.round(CalcWaitingBaseTime*0.25);//hell
+                break;
+            default:
+                return CalcWaitingBaseTime;
+                break;
+        }
+    }
+}
+
 CalcManager.difficulty = function(){
     if ($gameVariables){
-        return ($gameVariables.value(105) == 0 ? 1 : $gameVariables.value(105));
-    } else {
-        return 1;
+        if (this.isRankingMode()){
+            return ($gameVariables.value(105) == 0 ? 1 : $gameVariables.value(105));
+        }
     }
+    return 1;
 }
 
 CalcManager.setDifficulty = function(difficulty){
@@ -231,27 +400,6 @@ CalcManager.rankingModeClass = function(){
     return $gameVariables.value(101);
 }
 
-//CalcManager.saveRanking = function(){
-//    StorageManager.save(-2, JSON.stringify(this._rankingData));
-//}
-
-//CalcManager.loadRanking = function(){
-//    var json;
-//    var rankingData = {};
-//    try {
-//        json = StorageManager.load(-2);
-//    } catch (e) {
-//        console.log('nasi');
-//        console.error(e);
-//    }
-//    if (json) {
-//        console.log('Ranking data loaded')
-//        rankingData = JSON.parse(json);
-//        this.applyData(rankingData);
-//    }
-//    //this.applyData(rankingData);
-//}
-
 CalcManager.applyData = function(rankingData){
     $gameSystem._rankingData = rankingData;
 }
@@ -266,14 +414,15 @@ CalcManager.startBattle = function(){
     this._reservedAction = 0;
     this._emptyAnswer = 0;
     this._escapeReady = false;
+    this._countForState = 0;
 }
 
 CalcManager.OjbOfRankingModeChoice = function(){
     var items = [];
+    var pr = '';
     for(var i=0; i < RankingClass.length; i++){
         var text = RankingClass[i];
         if(!$gameSystem._rankingData.floors[i+1]){
-            console.log('new ranking data made');
             $gameSystem._rankingData.floors[i+1] = CalcManager.makeFloorData();
         }
         if($gameSystem._rankingData.floors[i+1].cleared === 4){
@@ -283,26 +432,68 @@ CalcManager.OjbOfRankingModeChoice = function(){
         } else if ($gameSystem._rankingData.floors[i+1].cleared){
             text += ' (クリア済み)';
         }
+        if($gameSystem._rankingData.floors[i+1].cleared > 0){
+            pr = RankingClass[i];
+        }
         items.push(text);
     }
     var obj = {items:items, 
                variableId:101, 
                caption:'階級を選んでください。', 
+               enabledList:this.makeEnabledList(),
+               playerRank:pr
               };
 
     return obj;
 }
 
-
+CalcManager.makeEnabledList = function(){
+    var enabledList = []
+    for(var i=0; i < RankingClass.length; i++){
+        switch(i){
+            case 6: case 7:
+                enabledList.push($gameSwitches.value(163)?true:false);
+                break;
+            case 8: case 9:
+                enabledList.push($gameSwitches.value(164)?true:false);
+                break;
+            case 10: case 11:
+                enabledList.push($gameSwitches.value(165)?true:false);
+                break;
+            case 12: case 13:
+                enabledList.push($gameSwitches.value(166)?true:false);
+                break;
+            case 14: case 15:
+                enabledList.push($gameSwitches.value(167)?true:false);
+                break;
+            case 16: case 17:
+                enabledList.push($gameSwitches.value(168)?true:false);
+                break;
+            case 18: case 19:
+                enabledList.push($gameSwitches.value(169)?true:false);
+                break;
+            default:
+                enabledList.push(true);
+                break;
+        }
+    }
+    return enabledList;
+}
 
 CalcManager.update = function(){
     if(BattleManager._phase == 'calcTurn'){
+        this._countForState++;
+        if(this._countForState>30){
+            $gameParty.updateStateTurns();
+            $gameTroop.updateStateTurns();
+            this._countForState = 0;
+        }
         $gameTroop.countCalcWaiting();
     }
 }
 
 CalcManager.input = function(symbol){
-    if (symbol === 'Enter' && $gameSwitches.value(114) && Utils.isOptionValid('test')){
+    if (symbol === 'forced' && Utils.isOptionValid('test')){
         if(!$gameTroop.isAllDead()){
             this.forcedRightAnswer();
             return;
@@ -314,12 +505,6 @@ CalcManager.input = function(symbol){
         this._currentInput = 
             this._currentInput.substr(0, this._currentInput.length-1)
         this._calcInputDisplayWindow.refresh(this._currentInput);
-//    } else if (symbol === '-'){
-//        if(this._currentInput[0] === '-'){
-//            this._currentInput = this._currentInput.slice(1);
-//        } else {
-//            this._currentInput = '-' + this._currentInput;
-//        }
     } else if (!isNaN(symbol)){
         if(this._currentInput.length > 10){
             SoundManager.playBuzzer();
@@ -330,11 +515,13 @@ CalcManager.input = function(symbol){
             if(!$gameTroop.isAllDead()){this.checkAnswer()};
         }
     };
-    //this._calcInputDisplayWindow.refresh(this._currentInput);
-    //if(!$gameTroop.isAllDead()){this.checkAnswer()};
 };
 
 CalcManager.forcedRightAnswer = function(){
+    this.processRightAnswer(this.maxWaitingEnemy());
+}
+
+CalcManager.maxWaitingEnemy = function(){
     var maxCalcWaiting = -1000000000;
     var bingoEnemy = null
     $gameTroop.aliveMembers().forEach(function(enemy){
@@ -344,8 +531,8 @@ CalcManager.forcedRightAnswer = function(){
                 bingoEnemy = enemy;
             }
         }
-    },this)
-    this.processRightAnswer(bingoEnemy)
+    },this);
+    return bingoEnemy;
 }
 
 CalcManager.checkAnswer = function(){
@@ -363,22 +550,14 @@ CalcManager.checkAnswer = function(){
             }
         }
     },this)
-    if (bingo){this.processRightAnswer(bingoEnemy)}
-//    else {
-//        var skillUsers = $gameParty.movableMembers().filter(function(actor){
-//            return actor.canUseSkill();
-//            });
-//        var bingos = skillUsers.filter(function(actor){
-//            return (actor._formula._answer.toString() === this._currentInput
-//           && !actor._isInputCalcLocked)},this)
-//        if(bingos[0]){
-//            this.processRightAnswer(bingos[0]);//アクタースキル発動
-//        } else {
-//            this.checkEmptyAnswer();
-//            //CalcManager.processWrongAnswer();
-//            //this._currentInput = '';
-//        }
-//    }
+    if (bingo){
+        this.processRightAnswer(bingoEnemy)
+    } else {
+        if (this._currentInput == '0'){
+            this._currentInput = '';
+            this._calcInputDisplayWindow.refresh(this._currentInput);
+        }
+    }
 };
 
 CalcManager.checkSkillAnswer = function(){
@@ -402,15 +581,9 @@ CalcManager.checkEmptyAnswer = function(){
         this._emptyAnswer++;
         if(this._emptyAnswer == 2){
             Score._attackNumber++;
-            //this._emptyAnswer = 0;
-            $gameTroop.aliveMembers().forEach(function(enemy){
-                enemy.resetFormula();
-                enemy._hitBaseScore -= Math.ceil(CalcWaitingTime*2/3)
-            })
-        } else if (this._emptyAnswer == 4){
+            $gameTroop.resetFormula();
+        } else if (this._emptyAnswer == 4 && !this.isRankingMode()){
             this._escapeReady = true;
-            //BattleManager._phase = 'calcEscape';
-            //BattleManager.processEscape();
         }
     }else {
         this._emptyAnswer = 0;
@@ -421,6 +594,7 @@ CalcManager.checkEmptyAnswer = function(){
 CalcManager.processRightAnswer = function(battler){
     this._emptyAnswer = 0;
     this._currentInput = '';
+    this._calcInputDisplayWindow.refresh(this._currentInput);
     SoundManager.playUseSkill();
     this.reserveActorAction(battler);
     battler.processRightAnswer();
@@ -428,18 +602,21 @@ CalcManager.processRightAnswer = function(battler){
         var skillName = $dataSkills[battler._calcSkillId].name;
     }
     this._scene.popupJudgement(battler.isEnemy()? 'GOOD!!' : skillName);
-    this._currentInput = '';
+    //this._currentInput = '';
 }
 
 CalcManager.processWrongAnswer = function(){
+    SoundManager.playBuzzer();
+    var count = this._currentInput === '';
+    this._scene.popupJudgement(count ? 'BAD!!':'No Hit!');
     this._currentInput = '';
     this._calcInputDisplayWindow.refresh(this._currentInput);
     SoundManager.playBuzzer();
-    this._scene.popupJudgement('BAD!!');
-    //this._currentInput = '';
-    $gameTroop.aliveMembers().forEach(function(enemy){
-        enemy._calcWaiting += Math.ceil(CalcWaitingTime/3);
-    })
+    if (count){
+        $gameTroop.aliveMembers().forEach(function(enemy){
+            enemy._calcWaiting += Math.ceil(this.calcWaitingTime()/3);
+        },this)
+    }
 }
 
 CalcManager.reserveActorAction = function(battler){
@@ -469,23 +646,6 @@ CalcManager.reserveActorActionSkill = function(actor){
     actor.addSkillActions(actor._calcSkillId);
     BattleManager._actionBattlers.push(actor);
 }
-
-//CalcManager.nextActor = function(){
-//    var actor = null;
-//    var n = $gameParty.members().length;
-//    this._actionOrderOfActor = -1; //FOREX
-//    for (var i=0; i<n; i++){
-//        this._actionOrderOfActor++;
-//        actor = $gameParty.members()[this._actionOrderOfActor % n]
-//        if (actor.canMove()){
-//            this._actionOrderOfActor = actor.index();
-//            return actor;
-//        }
-//    }
-//    if (actor === null){
-//        BattleManager.processDefeat();
-//    }
-//}
 
 CalcManager.Literals = [
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N',
@@ -560,13 +720,10 @@ Score._popupScoreOn = false;
 Score._attackNumber = 0;
 
 Score.isPopupScoreOn = function(){
-    //return this._popupScoreOn;
     return CalcManager.isRankingMode();
 }
 
 Score.addScore = function(addPoint){
-    //this._hitScore = (this._hitScore - this.agi).clamp(Score.MinHitScore, Score.MaxHitScore);
-    //this._currentScore += addPoint.clamp(Score.MinHitScore, Score.MaxHitScore);
     this._currentScore += addPoint;
     this._currentScoreSprite.refresh();
 }
@@ -601,36 +758,15 @@ Scene_Base.prototype.terminate = function() {
 var _Scene_Title_drawGameTitle = Scene_Title.prototype.drawGameTitle;
 Scene_Title.prototype.drawGameTitle = function(){
     _Scene_Title_drawGameTitle.call(this);
-    this._gameTitleSprite.bitmap.fontSize = 24;
-    this._gameTitleSprite.bitmap.outlineWidth = 2
+    this._gameTitleSprite.bitmap.applyFontStyle(FontStyles.style01);
     this._gameTitleSprite.bitmap.drawText(VERSION, 0, 0, Graphics.width, 24, 'left');
 }
-
-////var _Scene_Title_createCommandWindow = Scene_Title.prototype.createCommandWindow;
-//Scene_Title.prototype.createCommandWindow = function() {
-//    this._commandWindow = new Window_TitleCommand();
-//    this._commandWindow.setHandler('newGame',  this.commandNewGame.bind(this));
-//    this._commandWindow.setHandler('continue', this.commandContinue.bind(this));
-//    this._commandWindow.setHandler('options',  this.commandOptions.bind(this));
-//    //this._commandWindow.setHandler('rankingMode', this.commandRankingMode.bind(this));
-//    this.addWindow(this._commandWindow);
-//};
 
 var _Scene_Title_commandNewGame = Scene_Title.prototype.commandNewGame;
 Scene_Title.prototype.commandNewGame = function() {
     CalcManager.setupNewGame();
     _Scene_Title_commandNewGame.call(this);
 };
-
-//var _Scene_Map_start = Scene_Map.prototype.start;
-//Scene_Map.prototype.start = function() {
-//    _Scene_Map_start.call(this);
-//    var id = $gameMap.mapId();
-//    if (10 <= id && id <= 40){
-//        this.addChild(Score._currentScoreSprite);
-//        this.addChild(CalcManager._difficultySprite);
-//    }
-//};
 
 var _Scene_Map_createMapNameWindow = Scene_Map.prototype.createMapNameWindow;
 Scene_Map.prototype.createMapNameWindow = function() {
@@ -647,10 +783,30 @@ Window_MapName.prototype.windowWidth = function() {
     return ($gameMap.mapId() == 42 ? 560 : 360);
 };
 
+Scene_Map.prototype.startEncounterEffect = function() {
+    //this._spriteset.hideCharacters();
+    this._encounterEffectDuration = this.encounterEffectSpeed();
+};
+
 var _Scene_Menu_createCommandWindow = Scene_Menu.prototype.createCommandWindow;
 Scene_Menu.prototype.createCommandWindow = function(){
     _Scene_Menu_createCommandWindow.call(this);
     this._commandWindow.setHandler('calcSkill',this.commandPersonal.bind(this));
+    this._commandWindow.setHandler('fastTravel',this.commandFastTravel.bind(this));
+    this._commandWindow.setHandler('status',    this.commandChangeView.bind(this));
+}
+
+
+Scene_Menu.prototype.createGoldWindow = function() {
+    this._goldWindow = new Window_Gold2(0, 0);
+    this._goldWindow.y = this._commandWindow.height;
+    this.addWindow(this._goldWindow);
+};
+
+Scene_Menu.prototype.commandChangeView = function(){
+    this._statusWindow._anotherView = !this._statusWindow._anotherView;
+    this._statusWindow.refresh();
+    this._commandWindow.activate();
 }
 
 var _Scene_Menu_onPersonalOk = Scene_Menu.prototype.onPersonalOk;
@@ -661,6 +817,13 @@ Scene_Menu.prototype.onPersonalOk = function() {
     }
     _Scene_Menu_onPersonalOk.call(this);
 };
+
+Scene_Menu.prototype.commandFastTravel = function(){
+    var obj = {variableId:143,
+               caption:'行き先を選んでください。'}
+    this._commandWindow.activate();
+    var w = new Window_FastTravelChoice(obj);
+}
 
 function Scene_CalcSkill() {
     this.initialize.apply(this, arguments);
@@ -685,8 +848,6 @@ Scene_CalcSkill.prototype.determineItem = function(){
     var w = new Window_InstantCommand(obj);
 }
 
-
-
 var _Scene_Battle_start = Scene_Battle.prototype.start;
 Scene_Battle.prototype.start = function(){
     _Scene_Battle_start.call(this);
@@ -697,18 +858,8 @@ Scene_Battle.prototype.start = function(){
     }
 };
 
-//var _Scene_Battle_createDisplayObjects = Scene_Battle.prototype.createDisplayObjects;
-//Scene_Battle.prototype.createDisplayObjects = function() {
-//    _Scene_Battle_createDisplayObjects.call(this);
-//    if(CalcManager.isRankingMode()){
-//        this.addChild(Score._currentScoreSprite);
-//        this.addChild(CalcManager._difficultySprite);
-//    }
-//};
-
 var _Scene_Battle_createAllWindow = Scene_Battle.prototype.createAllWindows;
 Scene_Battle.prototype.createAllWindows = function(){
-    //_Scene_Battle_createAllWindow.call(this);
     this.createCalcInputWindow();
     _Scene_Battle_createAllWindow.call(this);
     this._statusWindow.x = this._calcInputWindow.width;
@@ -718,7 +869,6 @@ var _Scene_Battle_createStatusWindow = Scene_Battle.prototype.createStatusWindow
 Scene_Battle.prototype.createStatusWindow = function() {
     _Scene_Battle_createStatusWindow.call(this);
     this._statusWindow.visible = false;
-    //this._statusWindow.makeMiniGauge();
 };
 
 Scene_Battle.prototype.createCalcInputWindow = function(){
@@ -749,9 +899,10 @@ Scene_Battle.prototype.commandFight = function(){
     this.startCalcTurn();
     this._calcInputWindow.visible = true;
     this._calcInputDisplayWindow.visible = true;
-    ConfigManager.keyRemapForCalc();
+    Input.keyRemapForCalc(); //abcd
     Input._latestButton = 'null';
     this._calcInputWindow.activate();
+    CalcManager._currentInput = '';//★171119
     $gameParty.clearActions();
     $gameTroop.clearActions();
 };
@@ -786,13 +937,10 @@ Scene_RankingResult.prototype.initialize = function() {
 };
 
 Scene_RankingResult.prototype.create = function() {
-    Scene_Base.prototype.create.call(this);
-    
+    Scene_Base.prototype.create.call(this);    
     this.createBackground();
     this.createHeaderSprites();
     this.createResultSprites();
-    //this.createWindowLayer();
-    //this.createDummyWindow();
 };
 
 Scene_RankingResult.prototype.createBackground = function() {
@@ -821,8 +969,8 @@ Scene_RankingResult.prototype.titleBitmap = function(){
     var width = Graphics.width;
     var height = 48;
     var bitmap = new Bitmap(width, height);
-    bitmap.fontSize = 48;
-    var text = RankingClass[CalcManager.rankingModeClass()-1] + '  順位表'
+    bitmap.applyFontStyle(FontStyles.style02);
+    var text = RankingClass[CalcManager.rankingModeClass()-1] + '  順位表';
     bitmap.drawText(text, 0, 0, width, height, 'center')
     return bitmap;
 }
@@ -831,8 +979,7 @@ Scene_RankingResult.prototype.headerBitmap = function(){
     var width = Graphics.width;
     var height = 32;
     var bitmap = new Bitmap(width, height);
-    bitmap.textColor = '#2e9393';
-    bitmap.fontSize = 28;
+    bitmap.applyFontStyle(FontStyles.style03);
     bitmap.drawText('順位', width*1/6, 2, width/6, height, 'left');
     bitmap.drawText('名前', width*2/6-30, 2, width/6+30, height, 'left');
     bitmap.drawText('得点', width*3/6, 2, width/6, height, 'left');
@@ -844,8 +991,7 @@ Scene_RankingResult.prototype.subtitleBitmap = function(){
     var width = Graphics.width;
     var height = 32;
     var bitmap = new Bitmap(width, height);
-    bitmap.textColor = '#c7ff90';
-    bitmap.fontSize = 28;
+    bitmap.applyFontStyle(FontStyles.style04);
     var number = $gameSystem._rankingData.floors[CalcManager.rankingModeClass()].playDatas.length;
     var text = 'あなたは '+number+'人中、'+CalcManager._rankPosition+'位でした。';
     if(CalcManager._rankPosition < 4){
@@ -880,32 +1026,13 @@ Scene_RankingResult.prototype.createResultSprites = function(){
         //var scoreRate = (i==10? Score.scoreRate():data.scoreRate);
         bitmap.drawText(data.scoreRate.toFixed(2)+' %', width*4/6, 0, width/6, height, 'left');
         var difficulty = 1;
-//        if(i==10){
-//            difficulty = CalcManager._difficulty;
-//        } else {
-//            if (data.difficulty){
-//                difficulty = data.difficulty;
-//            } else {
-//                difficulty = 1;
-//            }
-//        }
         if (data.difficulty){
             difficulty = data.difficulty;
         }
-        switch(difficulty){
-            case 2:
-                var difficulty = 'Hard';
-                break;
-            case 4:
-                var difficulty = 'Super Hard';
-                break;
-            default:
-                var difficulty = '';
-                break;
-        }
+        difficulty = DifficultyText[difficulty];
         bitmap.drawText(difficulty, width*5/6, 0, width/7, height, 'center');
         if(rank == CalcManager._rankPosition){
-            bitmap.drawText('あなた→', width*0/6, 2, width/6, height, 'center');
+            bitmap.drawText('今回→', width*0/6, 2, width/6, height, 'center');
         }
         if(rank == CalcManager._rankPosition && rank < 10){
             var sprite = new Sprite_StandOut(bitmap);
@@ -916,18 +1043,6 @@ Scene_RankingResult.prototype.createResultSprites = function(){
         this.addChild(sprite);
     }
 }
-
-//Scene_RankingResult.prototype.createDummyWindow = function() {
-//    var items = [];
-//    var obj = {items:items,
-//               caption:'あなたの順位は'+CalcManager._rankPosition+'位です。',
-//              };
-//    this._dummyWindow = new Window_InstantCommand(obj)
-//    this._dummyWindow.setHandler('ok',     this.goToNextScene.bind(this));
-//    this._dummyWindow.setHandler('cancel', this.goToNextScene.bind(this));
-//    this.addWindow(this._dummyWindow);
-//};
-
 
 Scene_RankingResult.prototype.start = function() {
     Scene_Base.prototype.start.call(this);
@@ -961,24 +1076,9 @@ Scene_RankingResult.prototype.playMusic = function() {
     AudioManager.playBgm({name:'Ship3', pan:0, pitch:100, volume:90});
 };
 
-
 Sprite_Animation.prototype.startScreenFlash = function(color, duration) {
-//    this._screenFlashDuration = duration;
-//    if (this._screenFlashSprite) {
-//        this._screenFlashSprite.setColor(color[0], color[1], color[2]);
-//        this._screenFlashSprite.opacity = color[3];
-//    }
 };
 
-//Sprite_Battler.prototype.updateMain = function() {
-//    if (this._battler.isSpriteVisible()) {
-//        this.updateBitmap();
-//        this.updateFrame();
-//        this.updateFormula();
-//    }
-//    this.updateMove();
-//    this.updatePosition();
-//};
 
 Sprite_Battler.prototype.updateBitmap = function() {
     this.updateFormula();
@@ -1045,14 +1145,9 @@ Sprite_Battler.prototype.makeFormulaSprite = function(){
         var sprite = new Sprite_EnemyFormula();
     }
     var string = this._battler._formula._formulaString;
-    //sprite.setFormulaString(string);
     this._formulaSprite = sprite;
     this._formulaSprite._battler = this._battler;
     sprite.setFormulaString(string);
-//    var dx = this._battler.isActor() ? 70 : 0;
-//    var dy = this._battler.isActor() ? -24 : 0;
-//    sprite.x = this.x + dx;
-//    sprite.y = this.y - 16 + dy;
     this.formulaSpritePositioning();
     this.parent.addChild(sprite);
 }
@@ -1089,18 +1184,10 @@ Sprite_Actor.prototype.setActorHome = function(index) {
     this.setHome(x,y);
     var actor = this._battler;
     actor._sprite = this;
-    
-//    actor._homeX = 648 + index * 32 + index*32*3/(1+length);
-//    actor._homeY = 280 + index * 48 + index*48*3/(1+length);
-    //this.setHome(600 + index * 32, 280 + index * 48);
 };
 
-var _Sprite_Actor_onMoveEnd = Sprite_Actor.prototype.onMoveEnd;
-Sprite_Actor.prototype.onMoveEnd = function() {
-    _Sprite_Actor_onMoveEnd.call(this);
-    if(this._formulaSprite){
-       this.formulaSpritePositioning();
-    }
+Sprite_Actor.prototype.moveToStartPosition = function() {
+    this.startMove(0, 0, 0);
 };
 
 var _Sprite_Enemy_initialize = Sprite_Enemy.prototype.initialize;
@@ -1117,25 +1204,6 @@ Sprite_Enemy.prototype.damageOffsetY = function() {
 Sprite_Enemy.prototype.damageOffsetX = function() {
     return 8;
 };
-//var _Sprite_Enemy_initMembers = Sprite_Enemy.prototype.initMembers;
-//Sprite_Enemy.prototype.initMembers = function() {
-//    _Sprite_Enemy_initMembers.call(this);
-//    this._nameLabel.scale.x /= this.scale.x;
-//    this._nameLabel.scale.y /= this.scale.y;
-//};
-
-//function Sprite_CalcSkill(){
-//    this.initialize.apply(this, arguments);
-//}
-//
-//Sprite_CalcSkill.prototype = Object.create(Sprite_Battler.prototype);
-//Sprite_CalcSkill.prototype.constructor = Sprite_CalcSkill;
-//
-//Sprite_CalcSkill.prototype.initialize = function(){
-//    Sprite_Battler.prototype.initialize.call(this, $gameParty.battleSkillUser());
-//    this._homeX = 300;
-//    this._homeY = 300;
-//}
 
 var _Sprite_Damage_initialize = Sprite_Damage.prototype.initialize;
 Sprite_Damage.prototype.initialize = function() {
@@ -1163,28 +1231,6 @@ Sprite_Damage.prototype.setup = function(target, ac) {
     }
 };
 
-//Sprite_Damage.prototype.createChildSprite = function() {
-//    var sprite = new Sprite();
-//    sprite.bitmap = this._damageBitmap;
-//    sprite.anchor.x = 0.5;
-//    sprite.anchor.y = 1;
-//    sprite.y = -60;
-//    sprite.ry = sprite.y;
-//    this.addChild(sprite);
-//    return sprite;
-//};
-//
-//Sprite_Damage.prototype.updateChild = function(sprite) {
-//    sprite.dy += 0.5;
-//    sprite.ry += sprite.dy;
-//    if (sprite.ry >= 0) {
-//        sprite.ry = 0;
-//        sprite.dy *= -0.6;
-//    }
-//    sprite.y = Math.round(sprite.ry);
-//    sprite.setBlendColor(this._flashColor);
-//};
-
 Sprite_Damage.prototype.setupScore = function(target){
     var result = target.result();
     if(target.isEnemy() && result.hpDamage>0){
@@ -1195,13 +1241,6 @@ Sprite_Damage.prototype.setupScore = function(target){
         target._popupScore = 0;
     }
 }
-
-//var _Sprite_Damage_createDigits = Sprite_Damage.prototype.createDigits;
-//Sprite_Damage.prototype.createDigits = function(baseRow, value) {
-//    if(baseRow == 0){ //HPダメージの時
-//        this._damageValue = value;
-//    }
-//};
 
 var _Sprite_Damage_update = Sprite_Damage.prototype.update;
 Sprite_Damage.prototype.update = function() {
@@ -1234,27 +1273,21 @@ Sprite_Difficulty.prototype.initialize = function(){
     Sprite_Base.prototype.initialize.call(this);
     this.y = 5;
     this.refresh();
-    //this.opacity = 0;
-    //SceneManager._scene.addChild(this);
 }
 
 Sprite_Difficulty.prototype.refresh = function(){
     var string = DifficultyText[CalcManager.difficulty()];
     var bitmap = new Bitmap(1,1);
-    var width = 300
-    bitmap.fontSize = 32;
+    var width = 300;
+    bitmap.applyFontStyle(FontStyles.style05);
     var height = bitmap.fontSize+10;
     bitmap.resize(width, height);
-    bitmap.outlineColor = 'rgba(0, 0, 0, 1)';
-    bitmap.outlineWidth = 6;
-    bitmap.fontFace = 'MyFont001';
     bitmap.drawText(string, 0, 0, width, height, 'right');
     this.width = bitmap.width;
     this.height = bitmap.height;
     this.bitmap = bitmap;
     this.x = Graphics.width - this.width - 5;
 }
-
 
 function Sprite_Score(){
     this.initialize.apply(this, arguments);
@@ -1268,20 +1301,15 @@ Sprite_Score.prototype.initialize = function(){
     this.x = 5;
     this.y = 5;
     this.refresh();
-    //this.opacity = 0;
-    //SceneManager._scene.addChild(this)
 }
 
 Sprite_Score.prototype.refresh = function(){
     var string = 'Score : '+Score._currentScore.toString();
     var bitmap = new Bitmap(1,1);
     var width = bitmap.measureTextWidth(string)+32;
-    bitmap.fontSize = 32;
+    bitmap.applyFontStyle(FontStyles.style05);
     var height = bitmap.fontSize;
     bitmap.resize(width, height);
-    bitmap.outlineColor = 'rgba(0, 0, 0, 1)';
-    bitmap.outlineWidth = 6;
-    bitmap.fontFace = 'MyFont001';
     bitmap.drawText(string, 6, 0, width, height, 'left');
     this.width = bitmap.width;
     this.height = bitmap.height;
@@ -1311,11 +1339,9 @@ Sprite_EnemyNameLabel.prototype.initialize = function(battler){
 Sprite_EnemyNameLabel.prototype.makeBitmap = function(name){
     var bitmap = new Bitmap(1,1);
     var width = bitmap.measureTextWidth(name)+16;
-    bitmap.fontSize = 20;
+    bitmap.applyFontStyle(FontStyles.style06);
     var height = bitmap.fontSize;
     bitmap.resize(width, height);
-    bitmap.outlineColor = 'rgba(0, 0, 0, 1)';
-    bitmap.outlineWidth = 6;
     bitmap.drawText(name, 0, 0, width, height, 'center');
     this.width = bitmap.width;
     this.height = bitmap.height;
@@ -1331,7 +1357,6 @@ Sprite_EnemyNameLabel.prototype.update = function(){
     }
     if (this._effectType == 'disappear'){
         this.updateDisappear();
-        //this.updateHitEffect();
         return;
     }
     if (this._battler.isDead()){this.dispose()};
@@ -1361,6 +1386,7 @@ Sprite_Formula.prototype.initialize = function(){
     this._effectDuration = 0;
     this._effectType = '';
     this._blinking = 1;
+    this.visible = false;
 }
 
 Sprite_Formula.prototype.setFormulaString = function(string){
@@ -1383,10 +1409,6 @@ Sprite_Formula.prototype.startAppearEffect = function(){
 Sprite_Formula.prototype.startHitEffect = function(){
     this._effectDuration = 0;
     this._effectType = 'hit';
-    //this._baseY = this.y - 100;
-//    this.children.forEach(function(sprite){
-//        sprite.sx = r(20);
-//    });
 }
 
 Sprite_Formula.prototype.startSkillEffect = function(){
@@ -1424,11 +1446,12 @@ Sprite_Formula.prototype.update = function(){
 }
 
 Sprite_Formula.prototype.updateAppearEffect = function(){
-    var frameY = this._effectDuration*2;
+    var frameY = this._effectDuration*3;
     if (frameY > this.bitmap.height){
         //frameY = this.bitmap.height;
         this._effectType = '';
     }
+    this.visible = true;
 }
 
 Sprite_Formula.prototype.updateDisappearEffect = function(){
@@ -1445,10 +1468,6 @@ Sprite_Formula.prototype.updateDisappearEffect = function(){
 Sprite_Formula.prototype.updateHitEffect = function(){
     this._effectDuration++;
     var d = 10 - this._effectDuration*0.7;
-    //this.rotation += 0.3;
-    //this.x -= 7;
-    //this.y = this._baseY + (d * d)
-    
     this.children.forEach(function(sprite){
         sprite.x -= sprite.sx;
         sprite.y =(d * d)-100;
@@ -1472,15 +1491,6 @@ Sprite_Formula.prototype.updateSkillEffect = function(){
 Sprite_Formula.prototype.updateColorTone = function(){
 }
 
-Sprite_Formula.prototype.fontStyle01 = function(){
-    var fontStyle = {
-        fontFace : 'MyFont001',
-        outlineColor : 'rgba(0, 0, 0, 1)',
-        outlineWidth : 6
-    }
-    return fontStyle;
-}
-
 function Sprite_SkillFormula(){
     this.initialize.apply(this, arguments);
 }
@@ -1488,26 +1498,13 @@ function Sprite_SkillFormula(){
 Sprite_SkillFormula.prototype = Object.create(Sprite_Formula.prototype);
 Sprite_SkillFormula.prototype.constructor = Sprite_SkillFormula;
 
-Sprite_SkillFormula.prototype.fontStyle01 = function(){
-    var fontStyle = Sprite_Formula.prototype.fontStyle01.call(this);
-    fontStyle.fontSize = 24;
-    return fontStyle;
-}
-
-Sprite_SkillFormula.prototype.fontStyle02 = function(){
-    var fontStyle = Sprite_Formula.prototype.fontStyle01.call(this);
-    fontStyle.fontSize = 24;
-    fontStyle.textColor = 'rgb(100, 100, 100)';
-    return fontStyle;
-}
-
 Sprite_SkillFormula.prototype.setFormulaString = function(string){
     if(!this._battler.haveCalcSkill()){return};
     var skillName = this._battler._formula.skillName();
     var bitmap = new Bitmap(1,1);
     var width = Math.max(bitmap.measureTextWidth(string),
                         bitmap.measureTextWidth(skillName))+50;    
-    var fontStyle = this._battler.canUseSkill() ? this.fontStyle01() : this.fontStyle02();
+    var fontStyle = this._battler.canUseSkill() ? FontStyles.style08: FontStyles.style09;
     bitmap.applyFontStyle(fontStyle);
     var height = bitmap.fontSize*3;
     bitmap.resize(width, height);
@@ -1525,7 +1522,7 @@ Sprite_SkillFormula.prototype.setFormulaString = function(string){
 
 Sprite_SkillFormula.prototype.updateAppearEffect = function(){
     Sprite_Formula.prototype.updateAppearEffect.call(this);
-    this.setFrame(0,0,this.width,this._effectDuration*2);
+    this.setFrame(0,0,this.width,this._effectDuration*3);
     this._effectDuration++;
 }
 
@@ -1541,19 +1538,6 @@ Sprite_EnemyFormula.prototype.initialize = function(){
     this._widthSum = 0;
 }
 
-Sprite_EnemyFormula.prototype.fontStyle02 = function(){
-    var fontStyle = Sprite_Formula.prototype.fontStyle01.call(this);
-    fontStyle.textColor = 'rgb(100, 100, 255)'
-    return fontStyle;
-}
-
-Sprite_EnemyFormula.prototype.fontStyle03 = function(){
-    var fontStyle = Sprite_Formula.prototype.fontStyle01.call(this);
-    fontStyle.fontSize = 20;
-    fontStyle.outlineWidth = 4;
-    return fontStyle;
-}
-
 Sprite_EnemyFormula.prototype.setFormulaString = function(string){
     var x = 0;
     var pow = false
@@ -1561,12 +1545,12 @@ Sprite_EnemyFormula.prototype.setFormulaString = function(string){
         var c = string.charAt(i);
         switch (c){
             case '?':
-                var fontStyle = this.fontStyle02();
+                var fontStyle = FontStyles.style10;
                 i++;
                 c = string.charAt(i);
                 break;
             case '!':
-                var fontStyle = this.fontStyle03();
+                var fontStyle = FontStyles.style11;
                 i++;
                 c = string.charAt(i);
                 pow = true;
@@ -1574,15 +1558,15 @@ Sprite_EnemyFormula.prototype.setFormulaString = function(string){
             default :
                 if(pow && isNaN(c)){pow = false};
                 if(pow){
-                    var fontStyle = this.fontStyle03();
+                    var fontStyle = FontStyles.style11;
                 } else {
-                    var fontStyle = this.fontStyle01();
+                    var fontStyle = FontStyles.style07;
                 }
                 break;
         }
         var bitmap = new Bitmap(1,1);
         bitmap.applyFontStyle(fontStyle);
-        var width = bitmap.measureTextWidth(c);
+        var width = Math.max(bitmap.measureTextWidth(c),10);
         bitmap.resize(width+24, bitmap.fontSize);
         bitmap.drawText(c, 6, 0, bitmap.width, bitmap.height, 'center');
         var sprite = new Sprite(bitmap);
@@ -1607,13 +1591,13 @@ Sprite_EnemyFormula.prototype.updateAppearEffect = function(){
     this.children.forEach(function(sprite){
         var adjust = sprite.bitmap.fontSize == 20 ? 12 : 0;
         sprite.y = 28 - this._effectDuration*2 - adjust;
-        sprite.setFrame(0,0,sprite.width,this._effectDuration*2);
+        sprite.setFrame(0,0,sprite.width,this._effectDuration*3);
     },this);
     this._effectDuration++;
 }
 
 Sprite_EnemyFormula.prototype.updateColorTone = function(){
-    var g = 2*this._battler._calcWaiting/CalcWaitingTime;
+    var g = 2*this._battler._calcWaiting/CalcManager.calcWaitingTime();
     var ga = (g-0.5)*255;
     this._blinking *= -1;
     this.children.forEach(function(sprite){
@@ -1650,9 +1634,7 @@ Sprite_Judgement.prototype.initialize = function(judgement){
 
 Sprite_Judgement.prototype.makeBitmap = function(judgement){
     var bitmap = new Bitmap;
-    bitmap.fontSize = 48;
-    bitmap.outlineWidth = 8;
-    bitmap.fontFace = 'MyFont001';
+    bitmap.applyFontStyle(FontStyles.style12);
     bitmap.resize(bitmap.measureTextWidth(judgement), bitmap.fontSize)
     switch(judgement){
         case 'GOOD!!':
@@ -1732,20 +1714,14 @@ Sprite_Certificate.prototype.makeBitmap = function(){
 
 Sprite_Certificate.prototype.drawHead = function(){
     var bitmap = this.bitmap;
-    bitmap.textColor = '#000000';
-    bitmap.fontSize = 40;
-    bitmap.outlineColor = 'rgb(51, 51, 51)';
-    bitmap.outlineWidth = 3;
+    bitmap.applyFontStyle(FontStyles.style13);
     bitmap.drawText('認定証', this._padding, this._nextY, this.width-this._padding*2, 32, 'center');
     this._nextY += bitmap.fontSize + 20
 }
 
 Sprite_Certificate.prototype.drawRank = function(){
     var bitmap = this.bitmap;
-    bitmap.textColor = '#000000';
-    bitmap.fontSize = 40;
-    bitmap.outlineColor = 'rgb(51, 51, 51)';
-    bitmap.outlineWidth = 3;
+    bitmap.applyFontStyle(FontStyles.style13);
     var text = RankingClass[CalcManager.rankingModeClass()-1]
     bitmap.drawText(text, this._padding, this._nextY, this.width-this._padding*2, 32, 'center');
     this._nextY += bitmap.fontSize + 10
@@ -1753,10 +1729,7 @@ Sprite_Certificate.prototype.drawRank = function(){
 
 Sprite_Certificate.prototype.drawName = function(){
     var bitmap = this.bitmap;
-    bitmap.textColor = '#000000';
-    bitmap.fontSize = 24;
-    bitmap.outlineColor = 'rgb(51, 51, 51)';
-    bitmap.outlineWidth = 1;
+    bitmap.applyFontStyle(FontStyles.style14);
     var name = $gameParty.members()[0].name() + ' 殿';
     bitmap.fontItalic = true;
     bitmap.drawText(name, this._padding, this._nextY, this.width-this._padding*2, 32, 'left');
@@ -1766,9 +1739,7 @@ Sprite_Certificate.prototype.drawName = function(){
 
 Sprite_Certificate.prototype.drawContent = function(){
     var bitmap = this.bitmap;
-    bitmap.textColor = '#000000';
-    bitmap.fontSize = 24;
-    bitmap.outlineColor = 'rgb(51, 51, 51)';
+    bitmap.applyFontStyle(FontStyles.style14);
     var text = '  貴殿の頑張りに免じて'
     bitmap.drawText(text, this._padding, this._nextY, this.width-this._padding*2, 32, 'left');
     this._nextY += bitmap.fontSize + 10
@@ -1779,9 +1750,7 @@ Sprite_Certificate.prototype.drawContent = function(){
 
 Sprite_Certificate.prototype.drawDate = function(){
     var bitmap = this.bitmap;
-    bitmap.textColor = '#000000';
-    bitmap.fontSize = 24;
-    bitmap.outlineColor = 'rgb(51, 51, 51)';
+    bitmap.applyFontStyle(FontStyles.style14);
     var date = new Date();
     var dates = date.getFullYear() + '年 ';
     dates += (date.getMonth()+1) + '月 ';
@@ -1792,9 +1761,7 @@ Sprite_Certificate.prototype.drawDate = function(){
 
 Sprite_Certificate.prototype.drawDifficulty = function(){
     var bitmap = this.bitmap;
-    bitmap.textColor = '#000000';
-    bitmap.fontSize = 24;
-    bitmap.outlineColor = 'rgb(51, 51, 51)';
+    bitmap.applyFontStyle(FontStyles.style14);
     var text = '難易度 : '+DifficultyText[CalcManager.difficulty()];
     bitmap.drawText(text, this._padding, this._nextY, this.width-this._padding*2, 32, 'left');
     this._nextY += bitmap.fontSize + 10
@@ -1803,9 +1770,7 @@ Sprite_Certificate.prototype.drawDifficulty = function(){
 
 Sprite_Certificate.prototype.drawScore = function(){
     var bitmap = this.bitmap;
-    bitmap.textColor = '#000000';
-    bitmap.fontSize = 24;
-    bitmap.outlineColor = 'rgb(51, 51, 51)';
+    bitmap.applyFontStyle(FontStyles.style14);
     var score = '得点 ' +Score._currentScore.toString();
     bitmap.drawText(score, this._padding, this._nextY, this.width-this._padding*2, 32, 'left');
     this._nextY += bitmap.fontSize + 10
@@ -1813,9 +1778,7 @@ Sprite_Certificate.prototype.drawScore = function(){
 
 Sprite_Certificate.prototype.drawScoreRate = function(){
     var bitmap = this.bitmap;
-    bitmap.textColor = '#000000';
-    bitmap.fontSize = 24;
-    bitmap.outlineColor = 'rgb(51, 51, 51)';
+    bitmap.applyFontStyle(FontStyles.style14);
     var score = '得点率 ' +Score.scoreRate().toFixed(2).toString() + ' %';
     bitmap.drawText(score, this._padding, this._nextY, this.width-this._padding*2, 32, 'left');
     this._nextY += bitmap.fontSize + 10
@@ -1824,9 +1787,9 @@ Sprite_Certificate.prototype.drawScoreRate = function(){
 
 Sprite_Certificate.prototype.drawAssociation = function(){
     var bitmap = this.bitmap;
-    bitmap.textColor = '#000000';
+    var style = FontStyles.style14;
+    bitmap.applyFontStyle(style);
     bitmap.fontSize = 18;
-    bitmap.outlineColor = 'rgb(51, 51, 51)';
     var text = 'カルドラ段位認定協会';
     bitmap.drawText(text, this._padding, this._nextY, this.width-this._padding*2, 32, 'center');
     this._nextY += bitmap.fontSize + 10;
@@ -1834,9 +1797,7 @@ Sprite_Certificate.prototype.drawAssociation = function(){
 
 Sprite_Certificate.prototype.drawSignature = function(){
     var bitmap = this.bitmap;
-    bitmap.textColor = '#000000';
-    bitmap.fontSize = 24;
-    bitmap.outlineColor = 'rgb(51, 51, 51)';
+    bitmap.applyFontStyle(FontStyles.style14);
     var text = '副会長 シハーン';
     bitmap.drawText(text, this._padding, this._nextY, this.width-this._padding*2, 32, 'right');
     this._nextY += bitmap.fontSize + 10;
@@ -1871,11 +1832,6 @@ function Sprite_StandOut(){
 Sprite_StandOut.prototype = Object.create(Sprite.prototype);
 Sprite_StandOut.prototype.constructor = Sprite_StandOut;
 
-//Sprite_StandOut.prototype.initialize = function(bitmap){
-//    Sprite_Base.prototype.initialize.call(this,bitmap);
-//    
-//}
-
 Sprite_StandOut.prototype.update = function(){
     Sprite.prototype.update.call(this);
     if(Graphics.frameCount % 5 == 0){
@@ -1883,22 +1839,11 @@ Sprite_StandOut.prototype.update = function(){
     }
 }
 
-//var _Game_Map_setup = Game_Map.prototype.setup;
-//Game_Map.prototype.setup = function(mapId){
-//    for(i=1; i<101; i++){
-//        $gameSwitches.setValue(i, false);
-//    }
-//    Score._currentScoreSprite.alpha = (CalcManager.isRankingMode()? 1 : 0);
-//    CalcManager._difficultySprite.alpha = (CalcManager.isRankingMode()? 1 : 0);
-//    _Game_Map_setup.call(this, mapId);
-//}
-
 var _Game_System_initialize = Game_System.prototype.initialize;
 Game_System.prototype.initialize = function() {
     _Game_System_initialize.call(this);
     this._rankingData = null;
 };
-
 
 var _Game_Map_displayName = Game_Map.prototype.displayName;
 Game_Map.prototype.displayName = function() {
@@ -1930,14 +1875,11 @@ Game_BattlerBase.prototype.attackSkillId = function() {
     } else {
         return _Game_BattlerBase_attackSkillId.call(this);
     }
-    
 };
 
 Game_BattlerBase.prototype.isMovableLeader = function(){
     return this.index() == this.friendsUnit().movableLeader().index();
 }
-
-
 
 var _Game_Battler_initMembers = Game_Battler.prototype.initMembers
 Game_Battler.prototype.initMembers = function(){
@@ -1968,10 +1910,31 @@ Game_Battler.prototype.addActions = function(){
     }
 }
 
+Game_Actor.prototype.removeState = function(stateId) {
+    if(stateId == 1 && BattleManager._phase == 'calcTurn' && this.isDead()){
+        this.makeFormula();
+    }
+    Game_Battler.prototype.removeState.call(this, stateId);
+};
+
 var _Game_Actor_levelUp = Game_Actor.prototype.levelUp;
 Game_Actor.prototype.levelUp = function() {
     SoundManager.playLevelUp()
     _Game_Actor_levelUp.call(this);
+};
+
+Game_Actor.prototype.displayLevelUp = function(newSkills) {
+    if(!$gameParty.members().contains(this)){
+        return;
+    }
+    if(this.actorId() == 11){
+        var text = TextManager.levelUp.format(this._name, TextManager.level, this._level);
+        $gameMessage.newPage();
+        $gameMessage.add(text);
+    }
+        newSkills.forEach(function(skill) {
+        $gameMessage.add(TextManager.obtainSkill.format(this._name, skill.name));
+    },this);
 };
 
 Game_Actor.prototype.addActions = function(){
@@ -1985,28 +1948,63 @@ Game_Actor.prototype.addActions = function(){
 Game_Actor.prototype.addSkillActions = function(skillId){
     Game_Battler.prototype.addActions.call(this);
     this.makeAutoBattleActions(skillId);
-//    this._actions.forEach(function(action){
-//        action._calcLinkedEnemy = this._calcTarget;
-//    },this)
 }
 
-var _Game_Actor_makeAutoBattleActions = Game_Actor.prototype.makeAutoBattleActions;
+//var _Game_Actor_makeAutoBattleActions = Game_Actor.prototype.makeAutoBattleActions;
 Game_Actor.prototype.makeAutoBattleActions = function(skillId){
     var action = new Game_Action(this);
-    //skillId ? action.setSkill(skillId) : action.setAttack();
     if(skillId){
+        if (skillId == 29){
+            $gameParty.members().forEach(function(actor){
+                actor.gainHp(9999);
+            })
+        }
         action.setSkill(skillId);
         action.evaluate();
+        if(action.item().scope==1){
+            action._targetIndex = CalcManager.maxWaitingEnemy().index();
+        }
+        var enemies = [];
+        if(action.isForOpponent() && action.isAffectCalcWaiting()){
+            if(action.isForAll()){
+                enemies = $gameTroop.aliveMembers();
+            } else {
+                enemies.push($gameTroop.members()[action._targetIndex]);
+            }
+        }
+        enemies.forEach(function(enemy){
+            enemy.setCalcWaiting(-CalcWaitingBaseTime);
+        })
+        if(skillId==18){
+            $gameTroop.resetFormula();
+        }
     } else {
         action.setAttack();
     }
     this.setAction(0, action);
 }
 
+Game_Action.prototype.isAffectCalcWaiting = function(){
+    return this.item().meta.affectCalcWaiting;
+}
+
+Game_Action.prototype.executeHpDamage = function(target, value) {
+    if (this.isDrain()) {
+        value = Math.min(target.hp, value);
+    }
+    this.makeSuccess(target);
+    target.gainHp(-value);
+    //if (value > 0) {
+        target.onDamage(value);
+    //}
+    this.gainDrainedHp(value);
+};
+
+
 var _Game_Actor_removeCurrentAction = Game_Actor.prototype.removeCurrentAction;
 Game_Actor.prototype.removeCurrentAction = function(){
     var action = this._actions.shift();
-    enemy = action._calcLinkedEnemy;
+    var enemy = action._calcLinkedEnemy;
     if(this._isInputCalcLocked){
         this.makeFormula()
     }
@@ -2074,7 +2072,7 @@ Game_Actor.prototype.processRightAnswer = function(){
 var _Game_Enemy_setup = Game_Enemy.prototype.setup;
 Game_Enemy.prototype.setup = function(enemyId, x, y) {
     _Game_Enemy_setup.call(this, enemyId, x, y);
-    this._hitBaseScore = CalcWaitingTime;
+    this._hitBaseScore = CalcWaitingBaseTime//CalcManager.calcWaitingTime();
 };
 
 Game_Enemy.prototype.addActions = function(){
@@ -2102,20 +2100,25 @@ Game_Enemy.prototype.processRightAnswer = function(){
     if(this._hitBaseScore < 0){
         this._hitBaseScore = 0;
     }
-    var score = Math.ceil((this._hitBaseScore/CalcWaitingTime)*100)
+    //var score = Math.ceil((this._hitBaseScore/CalcManager.calcWaitingTime())*100)
+    var score = Math.ceil((this._hitBaseScore/CalcWaitingBaseTime)*100)
     this._popupScore = score.clamp(Score.MinHitScore, Score.MaxHitScore);
-    this._hitBaseScore = CalcWaitingTime;
+    this._hitBaseScore = CalcWaitingBaseTime//CalcManager.calcWaitingTime();
     this._calcWaiting = 0;
     this._isInputCalcLocked = true;
     this._formulaHitEffectRequested = true;
 }
 
+Game_Enemy.prototype.setCalcWaiting = function(n){
+    this._calcWaiting += n;
+}
+
 Game_Enemy.prototype.countCalcWaiting = function(){
     this._calcWaiting += this.agi*CalcManager.difficulty();
     this._hitBaseScore -= this.agi;
-    if(this._calcWaiting > CalcWaitingTime){
+    if(this._calcWaiting > CalcManager.calcWaitingTime()){
         this.addActions()
-        this._calcWaiting -= CalcWaitingTime;
+        this._calcWaiting -= CalcManager.calcWaitingTime();
     }
 }
 
@@ -2130,6 +2133,37 @@ Game_Unit.prototype.movableLeader = function(){
     return this.movableMembers()[0];
 }
 
+Game_Unit.prototype.updateStateTurns = function(){
+    this.aliveMembers().forEach(function(member){
+        member.updateStateTurns();
+        member.removeStatesAuto(2);
+    })
+}
+
+Game_Party.prototype.canChat =function(){
+    var i = $gameMap._interpreter;
+    var key = [i._mapId, i._eventId, 'E']
+    if($gameSelfSwitches.value(key)){
+        return false;
+    }
+    
+    for(var i=0; i < arguments.length; i++){
+        if(!this._actors.contains(arguments[i])){
+            return false;
+        }
+    }
+    $gameSelfSwitches.setValue(key, true);
+    return true;
+}
+
+Game_Troop.prototype.resetFormula = function(){
+    this.aliveMembers().forEach(function(enemy){
+        enemy.resetFormula();
+        enemy._hitBaseScore -= Math.ceil(CalcManager.calcWaitingTime()*2/3)
+    });
+}
+
+
 Game_Troop.prototype.disappearNameLabel = function(){
     this.members().forEach(function(enemy){
         enemy._calcTurn = true;
@@ -2141,6 +2175,15 @@ Game_Troop.prototype.makeFormula = function(){
         enemy.makeFormula();
     })
 }
+
+Game_Troop.prototype.onBattleStart = function() {
+    Game_Unit.prototype.onBattleStart.call(this);
+    //攻撃タイミングずらしの調整
+    var s = this.members().length;
+    for(var i = 0; i < s; i++){
+        this.members()[i]._calcWaiting -= Math.floor(i*CalcManager.calcWaitingTime()/s);
+    }
+};
 
 Game_Troop.prototype.countCalcWaiting = function(){
     this.aliveMembers().forEach(function(enemy){
@@ -2162,7 +2205,7 @@ Game_Troop.prototype.goldTotal = function() {
     } else {return _Game_Troop_goldTotal.call(this)}
 };
 
-Game_Troop.prototype.answers = function(){
+Game_Unit.prototype.answers = function(){
     var a = [];
     this.members().forEach(function(enemy){
         if (enemy._formula){
@@ -2196,14 +2239,40 @@ Game_Party.prototype.gainItem = function(item, amount, includeEquip) {
     _Game_Party_gainItem.call(this, item, amount, includeEquip);
 };
 
-function Calc_Formula() {
-    this.initialize.apply(this, arguments);
+var _Game_Player_initMembers = Game_Player.prototype.initMembers;
+Game_Player.prototype.initMembers = function() {
+    _Game_Player_initMembers.call(this);
+    this._reverseMove = false;
+};
+
+var _Game_Player_forceMoveRoute = Game_Player.prototype.forceMoveRoute;
+Game_Player.prototype.forceMoveRoute = function(moveRoute) {
+    if (this._reverseMove){
+        this.reverseRoute(moveRoute);
+    }
+    _Game_Player_forceMoveRoute.call(this, moveRoute);
+};
+
+Game_Player.prototype.reverseRoute = function(moveRoute){
+    moveRoute.list.reverse();
+        moveRoute.list.forEach(function(r){
+            switch(r.code){
+                case 1: case 2: case 3: case 4:
+                    r.code = 5 - r.code;
+                    break;
+                case 5: case 6: case 7: case 8:
+                    r.code = 9 - r.code;
+                    break
+            }
+        })
+    moveRoute.list.push(moveRoute.list.shift());
 }
 
 var _Game_Event_initMembers = Game_Event.prototype.initMembers;
 Game_Event.prototype.initMembers = function() {
     _Game_Event_initMembers.call(this);
     this._forCalcBattle = false;
+    this._trasporter = false;
 };
 
 var _Game_Event_meetsConditions = Game_Event.prototype.meetsConditions;
@@ -2214,6 +2283,18 @@ Game_Event.prototype.meetsConditions = function(page) {
     }
     return _Game_Event_meetsConditions.call(this, page);
 };
+
+var _Game_Event_update = Game_Event.prototype.update;
+Game_Event.prototype.update = function() {
+    _Game_Event_update.call(this);
+    if (this._trasporter){
+        Game_Vehicle.prototype.syncWithPlayer.call(this);
+    }
+};
+
+function Calc_Formula() {
+    this.initialize.apply(this, arguments);
+}
 
 Calc_Formula.prototype.initialize = function(obj){
     this._obj = obj;
@@ -2251,17 +2332,15 @@ Calc_Formula.prototype.makeFormula = function(){
     var v = this._v
     var string = this._scripts[this._counter % this._scripts.length];
     string += 'var yieldObject = {a:ans, s:str, v:v, l:l, la:la}'
+    var answers = this._obj.friendsUnit().answers();
     for (var i=0; i<5; i++){
         eval(string);
-        var answers = $gameTroop.answers();
         if (!answers.contains(Math.abs(yieldObject.a))){
             break;
         }
         if (i==4){console.log('juufuku')}
     }
-    //eval(string);
     this._answer = Math.abs(yieldObject.a);
-    //this._answer = Math.abs(this._answer);
     this._formulaString = yieldObject.s;
     this._l = yieldObject.l;
     this._la = yieldObject.la;
@@ -2278,25 +2357,17 @@ Calc_Formula.prototype.skillName = function(){
     return null;
 }
 
-Window_TitleCommand.prototype.makeCommandList = function() {
-    this.addCommand(TextManager.newGame,   'newGame');
-    this.addCommand(TextManager.continue_, 'continue', this.isContinueEnabled());
-//    this.addCommand('段位認定試験', 'rankingMode');
-//    this.addCommand(TextManager.options,   'options');
-    
-    //this.addCommand('段位認定試験', 'rankingMode');
-    this.addCommand(TextManager.options,   'options');
-
-};
-
 Window_MenuCommand.prototype.addMainCommands = function() {
-    var enabled = this.areMainCommandsEnabled();
+    var enabled = this.areMainCommandsEnabled() && !CalcManager.isRankingMode();
+    var enabled2 = $gameSwitches.value(118);
+    var enabled3 = $gameParty._actors.contains(13);
+    this.addCommand('ファストトラベル', 'fastTravel', enabled2);//★
     if (this.needsCommand('item')) {
         this.addCommand(TextManager.item, 'item', enabled);
     }
     if (this.needsCommand('skill')) {
-        this.addCommand(TextManager.skill, 'skill', enabled);
-        this.addCommand('バトルスキルセット', 'calcSkill', enabled);
+        this.addCommand(TextManager.skill, 'skill', enabled3);
+        this.addCommand('バトルスキル', 'calcSkill', enabled);
     }
     if (this.needsCommand('equip')) {
         this.addCommand(TextManager.equip, 'equip', enabled);
@@ -2306,12 +2377,114 @@ Window_MenuCommand.prototype.addMainCommands = function() {
     }
 };
 
+var _Scene_Menu_commandPersonal = Scene_Menu.prototype.commandPersonal;
+Scene_Menu.prototype.commandPersonal = function() {
+    if (this._commandWindow.currentSymbol() == 'skill'){
+        $gameParty.setMenuActor($gameActors.actor(13));
+        SceneManager.push(Scene_Skill);  
+    }
+    _Scene_Menu_commandPersonal.call(this);
+    
+//    this._statusWindow.setFormationMode(false);
+//    this._statusWindow.selectLast();
+//    this._statusWindow.activate();
+//    this._statusWindow.setHandler('ok',     this.onPersonalOk.bind(this));
+//    this._statusWindow.setHandler('cancel', this.onPersonalCancel.bind(this));
+};
+
+var _Scene_Skill_start = Scene_Skill.prototype.start;
+Scene_Skill.prototype.start = function() {
+    _Scene_Skill_start.call(this);
+    this.commandSkill();
+    this._skillTypeWindow.deactivate();
+};
+
+Scene_Skill.prototype.onItemCancel = function() {
+    //this._itemWindow.deselect();
+    //this._skillTypeWindow.activate();
+    this.popScene();
+};
+
+Window_EquipStatus.prototype.numVisibleRows = function() {
+    return 5;
+};
+
+var _Window_EquipStatus_drawItem = Window_EquipStatus.prototype.drawItem;
+Window_EquipStatus.prototype.drawItem = function(x, y, paramId) {
+    switch (paramId) {
+            case 2 : case 3 : break;
+            case 4 : paramId = 0; break;
+            case 5 : paramId = 1; break;
+            default : return; break;
+    }
+    _Window_EquipStatus_drawItem.call(this, x, y, paramId);
+};
+
+var _Window_Message_processCharacter = Window_Message.prototype.processCharacter;
+Window_Message.prototype.processCharacter = function(textState){
+    if(this._maleSpeaking){SoundManager.playSpeaking(80)};
+    if(this._femaleSpeaking){SoundManager.playSpeaking(120)};
+    _Window_Message_processCharacter.call(this,textState);
+}
+
+var _Window_Message_processEscapeCharacter = Window_Message.prototype.processEscapeCharacter;
+Window_Message.prototype.processEscapeCharacter = function(code, textState) {
+    _Window_Message_processEscapeCharacter.call(this, code, textState);
+    switch (code) {
+    case 'MV': //male voice
+        this._maleSpeaking = true;
+        break;
+    case 'FV': //female voice
+        this._femaleSpeaking = true;
+        break;
+    }
+};
+
+var _Window_Message_clearFlags = Window_Message.prototype.clearFlags;
+Window_Message.prototype.clearFlags = function() {
+    _Window_Message_clearFlags.call(this);
+    this._maleSpeaking = false;
+    this._femaleSpeaking = false;
+};
+
+function Window_Gold2() {
+    this.initialize.apply(this, arguments);
+}
+
+Window_Gold2.prototype = Object.create(Window_Gold.prototype);
+Window_Gold2.prototype.constructor = Window_Gold2;
+
+Window_Gold2.prototype.windowHeight = function() {
+    return this.fittingHeight(5)+12;
+};
+
+Window_Gold2.prototype.refresh = function() {
+    var lineHeight = this.lineHeight();
+    var x = this.textPadding();
+    var width = this.contents.width - this.textPadding() * 2;
+    this.contents.clear();
+    this.drawCurrencyValue(this.value(), this.currencyUnit(), x, lineHeight * 4 + 12, width);
+    
+    var actor = $gameActors.actor(11);
+    //var lineHeight = this.lineHeight();
+    var expTotal = TextManager.expTotal.format(TextManager.exp);
+    var expNext = TextManager.expNext.format(TextManager.level);
+    var value1 = actor.currentExp();
+    var value2 = actor.nextRequiredExp();
+    this.changeTextColor(this.systemColor());
+    this.drawText(expTotal, x, lineHeight * 0, width);
+    this.drawText(expNext, x, lineHeight * 2, width);
+    this.resetTextColor();
+    this.drawText(value1, x, lineHeight * 1, width, 'right');
+    this.drawText(value2, x, lineHeight * 3, width, 'right');
+};
+
 var _Window_SkillList_isEnabled = Window_SkillList.prototype.isEnabled;
 Window_SkillList.prototype.isEnabled = function(item) {
     if(SceneManager._scene.constructor == Scene_CalcSkill){
         return true;
     }
-    _Window_SkillList_isEnabled.call(this, item);
+    return _Window_SkillList_isEnabled.call(this, item);
 };
 
 
@@ -2326,7 +2499,7 @@ Window_CalcInput.ITEM =
     ['7', '8', '9', 'Enter', '', '',
      '4', '5', '6', '', '', '',
      '1', '2', '3', '', '', '',
-     '0', '0', 'BS','', '', ''];
+     '0', '', 'BS','', '', ''];
 
 Window_CalcInput.prototype.initialize = function(){
     var x = 0;
@@ -2360,6 +2533,11 @@ Window_CalcInput.prototype.enterRect = function(rect){
     return rect;
 };
 
+Window_CalcInput.prototype.zeroRect = function(rect){
+    rect.width *= 2;
+    return rect;
+};
+
 Window_CalcInput.prototype.windowHeight = function() {
     return this.fittingHeight(this.numVisibleRows());
 };
@@ -2369,11 +2547,15 @@ Window_CalcInput.prototype.numVisibleRows = function() {
 };
 
 Window_CalcInput.prototype.itemRect = function(index){
-    if (this.isEnterIndex(index)){
-        index = 3;
-    };
+    index = (this.isEnterIndex(index)? 3 : index);
+    index = (this.isZeroIndex(index)? 18 : index);
+//    if (this.isEnterIndex(index)){
+//        index = 3;
+//    };
     var rect = Window_Selectable.prototype.itemRect.call(this, index);
-    if (index === 3) {rect = this.enterRect(rect)};
+    //if (index === 3) {rect = this.enterRect(rect)};
+    rect = (index == 3 ? this.enterRect(rect) : rect);
+    rect = (index == 18 ? this.zeroRect(rect) : rect);
     return rect;
 };
 
@@ -2381,7 +2563,13 @@ Window_CalcInput.prototype.isEnterIndex = function(index){
     return [4, 5, 9, 10, 11, 15, 16, 17, 21, 22, 23].contains(index);
 };
 
+Window_CalcInput.prototype.isZeroIndex = function(index){
+    return [19].contains(index);
+};
+
 Window_CalcInput.prototype.drawItem = function(index){
+    //this.contents.fontFace = 'MyFont001';
+    this.contents.applyFontStyle(FontStyles.style07);
     this.drawItemRect(index);
     //if (index % 6 - 3 > 0){return};
     var rect = this.itemRectForText(index);
@@ -2390,14 +2578,15 @@ Window_CalcInput.prototype.drawItem = function(index){
 };
 
 Window_CalcInput.prototype.drawItemRect = function(index) {
-//        if ([4, 5, 9, 10, 11, 15, 16, 17, 21, 22, 23].contains(index)){
-//            return
-//        };
     var rect = this.itemRect(index);
-    if (index === 3) {rect = this.enterRect(rect)};
-    //var color = this.getRectColor(index);
-    switch(CalcManager.difficulty()){
+    switch($gameVariables.value(147)){
+        case 1:
+            var color = '#534208';
+            break;
         case 2:
+            var color = '#25214d';
+            break;
+        case 3:
             var color = '#6f0303';
             break;
         case 4:
@@ -2407,10 +2596,7 @@ Window_CalcInput.prototype.drawItemRect = function(index) {
             var color = '#534208';
             break;
     }
-//        if (index === 3){
-//            this.drawRect(rect.x+1, rect.y+1, rect.width*3-2, rect.height*4-2, color);
-//        }
-    if (this.isEnterIndex(index)){return};
+    if (this.isEnterIndex(index) || this.isZeroIndex(index)){return};
     this.drawRect(rect.x+1, rect.y+1, rect.width-2, rect.height-2, color);
 };
 
@@ -2421,50 +2607,24 @@ Window_CalcInput.prototype.drawRect = function(dx, dy, dw, dh, color) {
 };
 
 Window_CalcInput.prototype.cursorRight = function(wrap){
-    switch(this.index()){
-        case 3:
-            this.select(0);
-            break;
-        case 9:
-            this.select(6);
-            break;
-        case 15:
-            this.select(12);
-            break;
-        case 21:
-            this.select(18);
-            break;
-        default:
-            Window_Selectable.prototype.cursorRight.call(this, wrap);
-            break;
+    if(![3,9,15,21].contains(this.index())){
+        Window_Selectable.prototype.cursorRight.call(this, wrap);
     }
 }
 
 Window_CalcInput.prototype.cursorLeft = function(wrap){
-    switch(this.index()){
-        case 0:
-            this.select(3);
-            break;
-        case 6:
-            this.select(9);
-            break;
-        case 12:
-            this.select(15);
-            break;
-        case 18:
-            this.select(21);
-            break;
-        default:
-            Window_Selectable.prototype.cursorLeft.call(this, wrap);
-            break;
+    if(![0,6,12,18].contains(this.index())){
+        Window_Selectable.prototype.cursorLeft.call(this, wrap);
     }
 }
-
 
 Window_CalcInput.prototype.callOkHandler = function(){
     var symbol = Window_CalcInput.ITEM[this._index];
     if (this.isEnterIndex(this._index)){
         symbol = 'Enter';
+    }; 
+    if (this.isZeroIndex(this._index)){
+        symbol = '0';
     }; 
     CalcManager.input(symbol);
     if (TouchInput.date < Input.date) {
@@ -2505,8 +2665,8 @@ Window_CalcInput.prototype.onTouch = function(triggered) {
             if (triggered && this.isTouchOkEnabled()) {
                 this.select(hitIndex)
                 this.processOk();
-                this._flickStartX = x;
-                this._flickStartY = y;
+                //this._flickStartX = x;
+                //this._flickStartY = y;
                 this._touchPressed = true;
             }
         } 
@@ -2522,19 +2682,11 @@ Window_CalcInput.prototype.onTouch = function(triggered) {
     }
 };
 
-//Window_CalcInput.prototype.update = function(){
-//    this.processQuickEnter();
-//    this.processFlick();
-//    Window_Selectable.prototype.update.call(this);
-//    this.processNumKey();
-//    this.processByGamepad();
-//}
-
 Window_CalcInput.prototype.update = function(){
     if($gameTroop.isEventRunning()){return};
     if (this.active){
         this.processQuickEnter();
-        this.processFlick();
+        //this.processFlick();
         this.processNumKey();
         this.processByGamepad();
     }
@@ -2553,25 +2705,13 @@ Window_CalcInput.prototype.processQuickEnter = function(){
     }
 }
 
-Window_CalcInput.prototype.processFlick = function(){
-    if (this._touchPressed && TouchInput.isReleased()){
-        this._touchPressed = false;
-        var x1 = this._flickStartX;
-        var y1 = this._flickStartY;
-        var x2 = this.canvasToLocalX(TouchInput.x);
-        var y2 = this.canvasToLocalY(TouchInput.y);
-        var length = Math.sqrt((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2));
-        if (length > 40){
-            CalcManager.input('Enter');
-        }
-    }
-}
-
 Window_CalcInput.prototype.processByGamepad = function(){
     if (Input.isTriggered('pageup')){
         CalcManager.input('0');
+        this.select(7);
     } else if (Input.isTriggered('pagedown')){
         CalcManager.input('Enter');
+        this.select(7);
     }
 }
 
@@ -2603,9 +2743,7 @@ Window_CalcInputDisplay.prototype.textPadding = function() {
 
 Window_CalcInputDisplay.prototype.refresh = function(string){
     this.contents.clear();
-    this.contents.fontFace = 'MyFont001';
-    this.contents.outlineColor = 'rgba(0, 0, 0, 1)';
-    this.contents.outlineWidth = 6;
+    this.contents.applyFontStyle(FontStyles.style07);
     this.drawText(string, 6, 0, this.width-12, 'right');
 };
 
@@ -2644,6 +2782,71 @@ Window_PartyCommand.prototype.itemRect = function(index){
     }
 }
 
+var _Window_MenuStatus_initialize = Window_MenuStatus.prototype.initialize;
+Window_MenuStatus.prototype.initialize = function(x, y) {
+    this._anotherView = false; //攻撃力、防御力、装備表示用
+    _Window_MenuStatus_initialize.call(this, x, y);
+};
+
+Window_MenuStatus.prototype.drawActorSimpleStatus = function(actor, x, y, width) {
+    if(this._anotherView){
+        this.drawAnotherView(actor, x, y, width);
+        return;
+    }
+    var lineHeight = this.lineHeight();
+    var x2 = x + 180;
+    var width2 = Math.min(200, width - 180 - this.textPadding());
+    this.drawActorName(actor, x, y);
+    this.drawActorLevel(actor, x, y + lineHeight * 1);
+    //this.drawActorIcons(actor, x, y + lineHeight * 2);
+    this.drawActorSkill(actor, x, y + lineHeight * 2, width);
+    //this.drawActorClass(actor, x2, y);
+    this.drawActorHp(actor, x2, y + lineHeight * 0, width2);
+    this.drawActorMp(actor, x2, y + lineHeight * 1, width2);
+};
+
+Window_MenuStatus.prototype.drawActorSkill = function(actor, x, y, width) {
+    var skill = actor.calcSkill();
+    if (skill) {
+        this.drawItemName(skill, x, y, width - 4);
+        this.drawSkillCost(actor, skill, x+this.textWidth(skill.name)+48, y, width - 4);
+        this.changePaintOpacity(1);
+    }
+};
+
+Window_MenuStatus.prototype.drawSkillCost = function(actor, skill, x, y, width) {
+    if (actor.skillTpCost(skill) > 0) {
+        this.changeTextColor(this.tpCostColor());
+        this.drawText(actor.skillTpCost(skill), x, y, width, 'left');
+    } else if (actor.skillMpCost(skill) > 0) {
+        this.changeTextColor(this.mpCostColor());
+        this.drawText(actor.skillMpCost(skill), x, y, width, 'left');
+    }
+};
+
+Window_MenuStatus.prototype.drawAnotherView = function(actor, x, y, width){
+    var lineHeight = this.lineHeight();
+    var x2 = x + 180;
+    var x3 = x + 280;
+    var width2 = Math.min(200, width - 180 - this.textPadding());
+    this.drawActorName(actor, x, y);
+    this.drawActorClass(actor, x2, y);
+    this.drawItemName(actor.equips()[0], x, y + lineHeight * 1);
+    this.drawItemName(actor.equips()[2], x, y + lineHeight * 2);
+    this.drawIcon(97, x3, y + lineHeight * 1);
+    this.drawText(actor.param(2), x3 + 32, y + lineHeight * 1, 48, 'right');
+    this.drawIcon(81, x3, y + lineHeight * 2);
+    this.drawText(actor.param(3), x3 + 32, y + lineHeight * 2, 48, 'right');
+}
+
+var _Window_SavefileList_drawPlaytime = Window_SavefileList.prototype.drawPlaytime;
+Window_SavefileList.prototype.drawPlaytime = function(info, x, y, width) {
+    _Window_SavefileList_drawPlaytime.call(this, info, x, y, width);
+    if (info.difficultyText) {
+        this.drawText(info.difficultyText, x, y, width, 'reft');
+    }
+};
+
 Window_BattleStatus.prototype.windowWidth = function() {
     return Graphics.boxWidth - 400;
 };
@@ -2666,8 +2869,7 @@ Window_BattleLog.prototype.initialize = function() {
 Window_BattleLog.prototype.startAction = function(subject, action, targets) {
     var item = action.item();
     var id = item.animationId;
-    if(subject.isEnemy() && (item.id === 11 || item.id === 1)){
-    //if(subject.isEnemy()){
+    if(subject.isEnemy() && ([1,3,4,5,11].contains(item.id))){ //[]内は代替アニメーションスキルID
         if(subject.enemy().meta.AttackAnimationId){
             var id = subject.enemy().meta.AttackAnimationId;
         }
@@ -2781,7 +2983,8 @@ Window_FaceChoice.prototype.isTouchOkEnabled = function() {
 
 Window_FaceChoice.prototype.callOkHandler = function() {
     var faceName = this.faceName(this.index());
-    for (i=10; i<12; i++){
+    var actor = $gameActors.actor(10);
+    for (var i=10; i<12; i++){
         $gameActors.actor(i).setFaceImage(faceName, this.index()%8);
         $gameActors.actor(i).setCharacterImage(faceName, this.index()%8);
         $gameActors.actor(i).setBattlerImage(Window_FaceChoice.SVActorList[this.index()]);
@@ -2830,6 +3033,10 @@ Game_Player.prototype.updateNonmoving = function(wasMoving) {
         }
     }
 };
+
+
+
+
 
 
 //})();
